@@ -1,0 +1,432 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { 
+    Menu, User, IdCard, Building, Search, 
+    ShieldCheck, LogOut, ChevronDown, CheckCircle,
+    ChevronLeft, ChevronRight, Lock, Phone, Mail, MapPin, Briefcase, X 
+} from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import Swal from 'sweetalert2'
+
+// --- Type Definitions ---
+interface UserProfile {
+    id: number;
+    name: string;
+    position: string;
+    office: string;
+    division: string;
+    officePhone: string;
+    internalPhone: string;
+    mobilePhone: string;
+    email: string;
+    address: string;
+    imageUrl: string;
+}
+
+// --- Mock Data ---
+const positions = ['อัยการพิเศษฝ่าย', 'อัยการผู้เชี่ยวชาญ', 'เลขาธิการสำนักงานอัยการสูงสุด', 'นิติกรปฏิบัติการ', 'เจ้าหน้าที่ธุรการ' , 'แม่บ้าน'];
+const offices = ['สำนักงานอัยการสูงสุด (สอ.)', 'สำนักงานอัยการภาค 1', 'สำนักงานอัยการจังหวัดนนทบุรี (สอจ.นนทบุรี)','สำนักงานเลขานุการผู้บริหาร'];
+
+const officeDetails: Record<string, { phone: string; fax: string; address: string; email?: string; web?: string }> = {
+    'สำนักงานเลขานุการผู้บริหาร': {
+        phone: '0-2142-1701',
+        fax: '0-2142-1799',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4 ถนนแจ้งวัฒนะ แขวงทุ่งสองห้อง เขตหลักสี่ กรุงเทพมหานคร 10210',
+        email: 'cesd@ago.go.th'
+    },
+    // เพิ่มข้อมูลสำนักงานอื่นๆ ได้ที่นี่
+};
+
+// ✅ เปลี่ยนชื่อตัวแปรให้เป็น mockSearchResults เพื่อความเข้าใจง่าย
+const mockSearchResults: UserProfile[] = [
+    {
+        id: 1,
+        name: 'นางสาววริศรา บัวสมบูรณ์',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานเลขานุการผู้บริหาร',
+        division: 'เจ้าหน้าที่ประจำห้องผู้ตรวจการอัยการ (นายปรีชา สุดสงวน)',
+        officePhone: '0-2142-1767',
+        internalPhone: '21767',
+        mobilePhone: '08-5967-6315',
+        email: 'warisara.b@ago.go.th',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4',
+        imageUrl: 'https://via.placeholder.com/50x50/3498db/ffffff?text=W'
+    },
+    {
+        id: 2,
+        name: 'นายปฐวี วันดี',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานเลขานุการผู้บริหาร',
+        division: 'เจ้าหน้าที่ประจำห้องผู้ตรวจการอัยการ (นายพงษ์ศักดิ์ รัตนะพิสิฐ)',
+        officePhone: '0-2142-3866',
+        internalPhone: '23866',
+        mobilePhone: '08-0593-7725',
+        email: 'pathavee.w@ago.go.th',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4',
+        imageUrl: 'https://via.placeholder.com/50x50/f1c40f/333333?text=P'
+    },
+    {
+        id: 3,
+        name: 'นายเทพจุติ พรหมเทศน์',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานอัยการพิเศษฝ่ายคณะกรรมการ 1',
+        division: '',
+        officePhone: '0-2142-1830',
+        internalPhone: '21830',
+        mobilePhone: '09-1698-9546',
+        email: 'thepjuthi.p@ago.go.th',
+        address: 'อาคารสำนักงาน ชั้น 12',
+        imageUrl: 'https://via.placeholder.com/50x50/2ecc71/ffffff?text=T'
+    },
+    {
+        id: 4,
+        name: 'นางสาวชลิตา คงประเสริฐ',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานอัยการพิเศษฝ่ายคณะกรรมการ 1',
+        division: '',
+        officePhone: '0-2142-2166',
+        internalPhone: '22166',
+        mobilePhone: '08-9643-5369',
+        email: 'chalita.k@ago.go.th',
+        address: 'อาคารสำนักงาน ชั้น 12',
+        imageUrl: 'https://via.placeholder.com/50x50/e74c3c/ffffff?text=C'
+    },
+    {
+        id: 5,
+        name: 'นางสาวอรวรรยา ปัทมพันธุ์',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานอัยการพิเศษฝ่ายคณะกรรมการ 2',
+        division: 'งานสรรหา บรรจุ และแต่งตั้ง',
+        officePhone: '0-2141-2207',
+        internalPhone: '12207',
+        mobilePhone: '06-2541-4932',
+        email: 'aornwanlaya.p@ago.go.th',
+        address: 'อาคารสำนักงาน ชั้น 12',
+        imageUrl: 'https://via.placeholder.com/50x50/9b59b6/ffffff?text=A'
+    },
+    {
+        id: 6,
+        name: 'นางสาวปาลิตา โซวเซ็ง',
+        position: 'นิติกรปฏิบัติการ',
+        office: 'สำนักงานอัยการพิเศษฝ่ายคณะกรรมการ 2',
+        division: 'งานสรรหา บรรจุ และแต่งตั้ง',
+        officePhone: '0-2141-2207',
+        internalPhone: '12207',
+        mobilePhone: '09-3791-8799',
+        email: 'palita.s@ago.go.th',
+        address: 'อาคารสำนักงาน ชั้น 3',
+        imageUrl: 'https://via.placeholder.com/50x50/f1c40f/333333?text=P'
+    },
+];
+
+export default function SearchPage() {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const pathname = usePathname();
+    const router = useRouter();
+
+    const menuItems = [
+        { name: "ค้นหาบุคลากร", icon: User, href: "/phonebook/auth/personal" },
+        { name: "ค้นหาสำนักงาน", icon: Building, href: "/phonebook/auth/department" },
+        { name: "เปลี่ยนรหัสผ่าน", icon: Lock, href: "/phonebook/auth/changePassword" },
+    ];
+
+    // States
+    const [isSearchAlertOpen, setIsSearchAlertOpen] = useState(false);
+    const [isSearchSuccessOpen, setIsSearchSuccessOpen] = useState(false);
+    
+    // ✅ ใช้ mockSearchResults เป็นค่าเริ่มต้น
+    const [searchResults, setSearchResults] = useState<UserProfile[]>(mockSearchResults); 
+    const [filteredData, setFilteredData] = useState<UserProfile[]>(mockSearchResults);
+    const [searchResultsCount, setSearchResultsCount] = useState(0);
+    
+    const [showResults, setShowResults] = useState(false);
+    
+    // Profile & Office Modal States
+    const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+    const [isProfileCardOpen, setIsProfileCardOpen] = useState(false);
+    
+    const [isOfficeDetailOpen, setIsOfficeDetailOpen] = useState(false);
+    const [selectedOffice, setSelectedOffice] = useState<any>(null);
+
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+    });
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        const isEmpty = !formData.firstName.trim() && !formData.lastName.trim();
+        if (isEmpty) {
+            setIsSearchAlertOpen(true);
+            return;
+        }
+
+        // Filter Logic
+        const results = mockSearchResults.filter((item) => {
+            const searchFirst = formData.firstName.trim().toLowerCase();
+            const searchLast = formData.lastName.trim().toLowerCase();
+            const itemNameLower = item.name.toLowerCase();
+
+            const matchFirstName = searchFirst ? itemNameLower.includes(searchFirst) : true;
+            const matchLastName = searchLast ? itemNameLower.includes(searchLast) : true;
+
+            return matchFirstName && matchLastName;
+        });
+
+        setFilteredData(results);
+        setSearchResultsCount(results.length);
+        
+        setShowResults(false);
+        setIsSearchSuccessOpen(true);
+    };
+
+    const handleOfficeClick = (officeName: string) => {
+        const details = officeDetails[officeName] || { 
+            phone: 'ไม่ระบุ', 
+            fax: 'ไม่ระบุ', 
+            address: 'ไม่พบข้อมูลที่อยู่',
+            email: 'ไม่ระบุ',
+            web: 'ไม่ระบุ'
+        };
+        setSelectedOffice({ name: officeName, ...details });
+        setIsOfficeDetailOpen(true);
+    };
+
+    const handleUserClick = (user: UserProfile) => {
+        setSelectedUser(user);
+        setIsProfileCardOpen(true);
+    };
+
+    return (
+        <div className="flex h-screen w-full bg-gray-100 font-sans text-sm relative">
+            
+            {/* Sidebar */}
+            <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out hidden md:flex`}>
+                <div className={`p-4 border-b border-gray-100 flex items-center justify-center h-20 overflow-hidden`}>
+                   <h1 className={`font-bold text-gray-700 transition-all duration-300 ${isSidebarOpen ? 'text-2xl' : 'text-sm'}`}>OAG</h1>
+                </div>
+                <nav className="flex-1 py-4 space-y-1">
+                   {menuItems.map((item) => {
+                       const isActive = pathname === item.href;
+                       return (
+                           <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 transition-colors relative group ${isActive ? 'bg-gray-200 text-gray-900 border-l-4 border-gray-600' : 'text-gray-600 hover:bg-gray-50 border-l-4 border-transparent'}`}>
+                              <div className={`${isActive ? 'text-gray-800' : 'text-gray-500'}`}><item.icon size={20} /></div>
+                              <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${!isSidebarOpen && 'w-0 opacity-0'}`}>{item.name}</span>
+                           </Link>
+                       )
+                   })}
+                </nav>
+                <div className="p-4 border-t text-center text-xs text-gray-400">v.5.4.0</div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col min-w-0">
+                 <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-10">
+                    <div className="flex items-center gap-4"><button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-500 hover:bg-gray-100 p-2 rounded"><Menu size={20} /></button><h1 className="text-gray-700 font-medium text-lg">สมุดโทรศัพท์ สำนักงานอัยการสูงสุด</h1></div>
+                    <div className="flex items-center gap-3"><span className="text-gray-600 font-medium">ชื่อจริง นามสกุล</span><Link href="/" className="text-red-500 text-xs hover:underline flex items-center gap-1"><LogOut size={12} /> Logout</Link></div>
+                 </header>
+
+                 <div className="flex-1 p-6 md:p-10 overflow-auto relative z-0">
+                    {/* Search Form */}
+                    <div className="w-full max-w-7xl mx-auto bg-white shadow rounded-sm overflow-hidden mb-8">
+                        <div className="bg-[#0f3fa6] text-white p-4 flex items-center justify-center"> {/* ✅ แก้ไข: เพิ่ม justify-center และลบ gap-2 ออก */}
+                            <h2 className="text-lg font-medium flex items-center gap-2"> {/* ✅ แก้ไข: ย้าย ShieldCheck มาอยู่ใน h2 */}
+                                <ShieldCheck size={20} />ข้อมูลบุคลากร</h2></div>
+                        <form onSubmit={handleSearch} className="p-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                                <div className="flex items-end gap-3 w-full">
+                                    <div className="pb-2 text-gray-500"><User size={22} /></div>
+                                    <div className="h-6 w-px bg-gray-300 mb-2"></div> 
+                                    <div className="flex-1 border-b border-gray-300 pb-1 focus-within:border-blue-500 transition-colors">
+                                        <input type="text" placeholder="ชื่อ" className="w-full outline-none text-gray-700 placeholder-gray-400" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="flex items-end gap-3 w-full">
+                                    <div className="pb-2 text-transparent"><User size={22} /></div> 
+                                    <div className="h-6 w-px bg-gray-300 mb-2 opacity-0 md:opacity-100"></div>
+                                    <div className="flex-1 border-b border-gray-300 pb-1 focus-within:border-blue-500 transition-colors">
+                                        <input type="text" placeholder="นามสกุล" className="w-full outline-none text-gray-700 placeholder-gray-400" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
+                                    </div>
+                                </div>
+                            </div>
+    
+                            <div className="pt-4">
+                                <button type="submit" className="w-full bg-[#ff9800] hover:bg-[#f57c00] text-white font-medium py-3 rounded shadow-sm flex items-center justify-center gap-2 transition-colors text-lg">
+                                    <Search size={22} /> ค้นหา
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Results Table */}
+                    {showResults && (
+                        <div className="w-full max-w-7xl mx-auto bg-white shadow rounded-sm overflow-hidden mb-10">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap">รูปภาพ</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap">ชื่อ-นามสกุล</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap">ตำแหน่ง</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap">สำนักงาน</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap">กลุ่มงาน/ฝ่าย</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap text-center">เบอร์โทรสำนักงาน</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap text-center">เบอร์โทรภายใน</th>
+                                            <th className="p-4 font-semibold text-gray-600 text-xs md:text-sm whitespace-nowrap text-center">เบอร์โทรศัพท์มือถือ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {/* ใช้ filteredData */}
+                                        {filteredData.length > 0 ? (
+                                            filteredData.map((item) => (
+                                                <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                                    <td className="p-2 w-16">
+                                                        <img 
+                                                            src={item.imageUrl} 
+                                                            alt={`รูปภาพของ ${item.name}`} 
+                                                            className="w-10 h-10 object-cover rounded-full shadow-md border-2 border-gray-200"
+                                                            // ถ้าไม่มีรูปจริง ให้ใช้ placeholder
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/50x50/cccccc/ffffff?text=User';
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td className="p-4 font-bold text-gray-800 whitespace-nowrap">
+                                                        <div 
+                                                            onClick={() => handleUserClick(item)} 
+                                                            className="text-blue-600 hover:underline cursor-pointer"
+                                                        >
+                                                            {item.name}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-gray-700 whitespace-nowrap">{item.position}</td>
+                                                    <td className="p-4">
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={(e) => { e.preventDefault(); handleOfficeClick(item.office); }} 
+                                                            className="text-blue-500 hover:underline cursor-pointer min-w-[200px] text-left outline-none"
+                                                        >
+                                                            {item.office}
+                                                        </button>
+                                                    </td>
+                                                    <td className="p-4 text-gray-600 min-w-[150px]">{item.division}</td>
+                                                    <td className="p-4 text-center">{item.officePhone && (<span className="inline-block bg-[#eeeeee] text-gray-800 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">{item.officePhone}</span>)}</td>
+                                                    <td className="p-4 text-center">{item.internalPhone && (<span className="inline-block bg-[#eeeeee] text-gray-800 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">{item.internalPhone}</span>)}</td>
+                                                    <td className="p-4 text-center">{item.mobilePhone && (<span className="inline-block bg-[#eeeeee] text-gray-800 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">{item.mobilePhone}</span>)}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan={8} className="p-8 text-center text-gray-500">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex items-center justify-end p-4 border-t border-gray-200 bg-white gap-4 text-gray-600 text-xs md:text-sm">
+                                <div className="flex items-center gap-2"><span>Rows per page:</span><div className="relative"><select className="appearance-none bg-gray-50 border border-gray-200 rounded py-1 pl-2 pr-6 focus:outline-none focus:border-blue-500 cursor-pointer"><option>50</option><option>100</option></select><ChevronDown size={14} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"/></div></div><span>1-{filteredData.length} of {filteredData.length}</span><div className="flex items-center gap-2"><button className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"><ChevronLeft size={20} /></button><button className="p-1 rounded hover:bg-gray-100"><ChevronRight size={20} /></button></div>
+                            </div>
+                        </div>
+                    )}
+                 </div>
+            </main>
+
+            {/* --- MODALS --- */}
+
+            {/* 1. Office Detail Modal */}
+            {isOfficeDetailOpen && selectedOffice && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+                            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2"><Building size={24} className="text-gray-500" />ข้อมูลสำนักงาน</h3>
+                            <button onClick={() => setIsOfficeDetailOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="pb-2 border-b border-gray-100"><p className="text-sm text-gray-500 mb-1">ชื่อสำนักงาน</p><p className="text-lg font-medium text-gray-800">{selectedOffice.name}</p></div>
+                            <div className="space-y-3 text-sm md:text-base text-gray-700">
+                                <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-2"><span className="font-semibold text-gray-900">อีเมล :</span><span className="text-blue-600 hover:underline cursor-pointer">{selectedOffice.email}</span></div>
+                                <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-2"><span className="font-semibold text-gray-900">เบอร์โทรสำนักงาน :</span><span>{selectedOffice.phone}</span></div>
+                                <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-2"><span className="font-semibold text-gray-900">แฟกซ์ :</span><span>{selectedOffice.fax}</span></div>
+                                <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-2"><span className="font-semibold text-gray-900">ที่อยู่หน่วยงาน :</span><span className="text-blue-600 hover:underline cursor-pointer leading-relaxed">{selectedOffice.address}</span></div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+                            <button type="button" onClick={() => setIsOfficeDetailOpen(false)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded shadow-sm transition-colors">ปิด</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 2. Search Alert Modal */}
+            {isSearchAlertOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 text-center">
+                       <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.3 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                       </div> 
+                        <p className="mb-6 text-lg text-gray-700">กรุณากรอกข้อมูลการค้นหา</p>
+                        <button onClick={() => setIsSearchAlertOpen(false)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">ตกลง</button>
+                    </div>
+                </div>
+            )}
+            
+            {/* 3. Search Success Modal */}
+            {isSearchSuccessOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 text-center">
+                        <div className="mb-4 flex justify-center"><CheckCircle size={48} className="text-green-500" /></div>
+                        <p className="mb-6 text-lg text-gray-700">พบข้อมูล <span className="font-bold text-green-600">{searchResultsCount}</span> รายการ</p>
+                        <button onClick={() => { setIsSearchSuccessOpen(false); setShowResults(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">ตกลง</button>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. Profile Card Modal */}
+            {isProfileCardOpen && selectedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100">
+                        <div className="bg-blue-600 text-white p-5 flex items-center justify-center"> {/* เปลี่ยนเป็น justify-center */}
+                            <h3 className="text-xl font-bold">{selectedUser.name}</h3>
+                        </div>
+                        <div className="p-6 space-y-4 text-center">
+                            <div className="mb-4 flex justify-center">
+                                <img 
+                                    src={selectedUser.imageUrl} 
+                                    alt={`รูปภาพของ ${selectedUser.name}`} 
+                                    className="w-24 h-24 object-cover border-4 border-white shadow-lg"
+                                    onError={(e) => {
+                            // Placeholder ถ้าไม่มีรูปภาพจริง
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/100x100/eeeeee/333333?text=User';
+                                    }}/>
+                            </div>
+                            <div className="flex flex-col items-center space-y-1 pb-4 border-b border-gray-200">
+                                {/* <Briefcase size={20} className="text-blue-600 flex-shrink-0 mt-1" /> */}
+                                {/* <p className="font-semibold text-gray-700">ตำแหน่ง:</p> */}
+                                <div><p className="text-base font-medium">{selectedUser.position}</p><p className="text-sm text-gray-500 mt-1">{selectedUser.office}</p><p className="text-sm text-gray-500 mt-1">{selectedUser.division}</p></div>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-gray-700 flex items-center"><Phone size={18} className="mr-2"/>ข้อมูลติดต่อ</h4>
+                                <div className="flex justify-between items-center text-sm"><span className="text-gray-600">เบอร์โทรศัพท์สำนักงาน:</span><span className="font-medium text-blue-600">{selectedUser.phone || selectedUser.officePhone}</span></div>
+                                <div className="flex justify-between items-center text-sm"><span className="text-gray-600">เบอร์โทรศัพท์ภายใน:</span><span className="font-medium text-blue-600">{selectedUser.internalPhone}</span></div>
+                                <div className="flex justify-between items-center text-sm"><span className="text-gray-600">เบอร์โทรศัพท์มือถือ:</span><span className="font-medium text-blue-600">{selectedUser.mobilePhone}</span></div>
+                                <div className="flex items-center text-sm space-x-2 pt-2"><Mail size={16} className="text-gray-500 flex-shrink-0"/><span className="text-gray-600 truncate">{selectedUser.email}</span></div>
+                            </div>
+                            <div className="pt-4 border-t space-y-2">
+                                <h4 className="font-bold text-gray-700 flex items-center"><MapPin size={18} className="mr-2"/>สำนักงาน</h4>
+                                <p className="text-sm text-gray-600">{selectedUser.address}</p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-4 border-t flex justify-end">
+                            <button onClick={() => setIsProfileCardOpen(false)} className="px-4 py-2 text-sm font-medium rounded shadow-sm transition bg-gray-300 text-gray-700 hover:bg-gray-400">ปิด</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    )
+}

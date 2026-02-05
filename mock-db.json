@@ -1,0 +1,33 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin01",
+      "password": "hashed_password_123", 
+      "role": "ADMIN",
+      "fullName": "System Administrator"
+    },
+    {
+      "id": 2,
+      "username": "unit_admin01",
+      "password": "hashed_password_456",
+      "role": "UNIT_ADMIN",
+      "officeId": 1,
+      "fullName": "Manager Office A"
+    },
+    {
+      "id": 3,
+      "username": "1234567890123",
+      "password": "123456",
+      "role": "USER",
+      "fullName": "General Staff"
+    },
+      {
+      "id": 4,
+      "username": "1929900327268",
+      "password": "123456",
+      "role": "USER",
+      "fullName": "General Staff"
+    }
+  ]
+}

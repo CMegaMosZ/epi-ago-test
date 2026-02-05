@@ -1,0 +1,503 @@
+'use client'
+
+import { useState, useMemo, useCallback } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Search, Building, CheckCircle, ChevronDown, Building2, Phone, Mail, MapPin, User, ArrowLeft } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import Swal from 'sweetalert2'
+
+// --- Type Definitions ---
+interface OfficeDetail {
+    id: number;
+    name: string;      // ชื่อสำนักงาน
+    initial: string;   // ชื่อย่อ
+    phone: string;
+    fax: string;
+    email: string;
+    address: string;
+    division: string;  // สังกัดหน่วยงาน
+    contact?: OfficeContact;
+}
+
+interface OfficeContact {
+    name: string;
+    position: string;
+    phone: string;
+}
+
+// --- Mock Data (มีการกำหนด Division ที่ชัดเจน) ---
+const officeData: OfficeDetail[] = [
+    {
+        id: 1,
+        name: 'สำนักงานเลขานุการผู้บริหาร',
+        initial: 'สลบ.',
+        phone: '0-2142-1701',
+        fax: '0-2142-1799',
+        email: 'cesd@ago.go.th',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4',
+        division: 'สำนักงานเลขาธิการ',
+        contact: {
+            name: 'นายสมชาย ใจดี',
+            position: 'admin',
+            phone: '0-2142-1701 (ต่อ 101)',
+        }
+    },
+    {
+        id: 2,
+        name: 'สำนักบริหารกลาง',
+        initial: 'สบก.',
+        phone: '0-2142-1552',
+        fax: '0-2143-9546',
+        email: 'gad@ago.go.th',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 2',
+        division: 'สำนักงานเลขาธิการ',
+        contact: {
+            name: 'นายหำ ใจเด็ด',
+            position: 'admin',
+            phone: '0-2142-1701 (ต่อ 101)',
+        }
+    },
+    {
+        id: 3,
+        name: 'สำนักเทคโนโลยีสารสนเทศและการสื่อสาร',
+        initial: 'สทส.',
+        phone: '0-2515-4458',
+        fax: '0-2515-4459',
+        email: 'ict@ago.go.th',
+        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 6',
+        division: 'สำนักงานเลขาธิการ',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+    {
+        id: 4,
+        name: 'สำนักงานอัยการสูงสุด',
+        initial: 'สอ.',
+        phone: '0-2515-5120',
+        fax: '0-2515-4680',
+        email: 'info@ago.go.th',
+        address: 'ถนนรัชดาภิเษก',
+        division: 'สำนักงานอัยการสูงสุด',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+    {
+        id: 5,
+        name: 'สำนักงานอัยการพิเศษฝ่ายคดีแพ่ง 1',
+        initial: 'สอพ.1',
+        phone: '0-2142-2000',
+        fax: '0-2142-2001',
+        email: 'civil1@ago.go.th',
+        address: 'อาคารถนนรัชดาภิเษก ชั้น 7',
+        division: 'สำนักงานคดีแพ่ง',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+    {
+        id: 6,
+        name: 'สำนักงานอัยการพิเศษฝ่ายคดีแพ่ง 2',
+        initial: 'สอพ.2',
+        phone: '0-2142-2002',
+        fax: '0-2142-2003',
+        email: 'civil2@ago.go.th',
+        address: 'อาคารถนนรัชดาภิเษก ชั้น 8',
+        division: 'สำนักงานคดีแพ่ง',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+    {
+        id: 7,
+        name: 'สำนักงานอัยการจังหวัดนนทบุรี',
+        initial: 'สอจ.นนทบุรี',
+        phone: '0-2965-9999',
+        fax: '0-2965-9998',
+        email: 'nonthaburi@ago.go.th',
+        address: 'ศูนย์ราชการจังหวัดนนทบุรี',
+        division: 'สำนักงานอัยการภาค 1',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+    {
+        id: 8,
+        name: 'สำนักงานอัยการจังหวัดปทุมธานี',
+        initial: 'สอจ.ปทุมธานี',
+        phone: '0-2581-1111',
+        fax: '0-2581-1112',
+        email: 'patumthani@ago.go.th',
+        address: 'ศาลากลางจังหวัดปทุมธานี',
+        division: 'สำนักงานอัยการภาค 1',
+        contact: {
+            name: 'นางสาวนพรัตน์ คู้บอน',
+            position: 'admin',
+            phone: '0-2142-1221 (ต่อ 28)',
+        }
+    },
+];
+
+// --- SearchableDropdown Component (ไม่มีการเปลี่ยนแปลงจากครั้งที่แล้ว) ---
+const SearchableDropdown = ({ placeholder, icon: Icon, options, value, onChange, zIndex = 'z-20' }) => {
+    const [searchTerm, setSearchTerm] = useState(value);
+    const [isListOpen, setIsListOpen] = useState(false);
+    const directionClass = 'bottom-full mb-1'; // แสดงขึ้นด้านบน (Drop-up)
+
+    // กรองรายการตามคำค้นหาภายใน Dropdown
+    const filteredOptions = useMemo(() => options.filter(option => 
+        option.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [options, searchTerm]);
+
+    // เมื่อเลือกรายการจาก List
+    const handleSelect = (option) => {
+        setSearchTerm(option);
+        onChange(option); // อัปเดต State หลัก
+        setIsListOpen(false);
+    };
+
+    // เมื่อพิมพ์ในช่องค้นหา
+    const handleSearchTermChange = (e) => {
+        const newTerm = e.target.value;
+        setSearchTerm(newTerm);
+        onChange(newTerm); // อัปเดต State หลักทันทีที่พิมพ์
+        setIsListOpen(true);
+    };
+
+    return (
+        <div className={`relative w-full ${zIndex}`}> 
+            <label className="block text-sm font-medium text-gray-700 sr-only">{placeholder}</label>
+            <div className="relative flex items-end w-full border-b border-gray-300 focus-within:border-blue-500 transition-colors">
+                <div className="pb-1 text-gray-500"><Icon className="h-5 w-5" aria-hidden="true" /></div>
+                <div className="flex-1">
+                    <input
+                        type="text"
+                        placeholder={placeholder}
+                        className="w-full outline-none text-gray-700 placeholder-gray-400 py-1 pl-2 text-sm"
+                        value={searchTerm}
+                        onChange={handleSearchTermChange}
+                        onFocus={() => setIsListOpen(true)}
+                        onBlur={() => {
+                            // Delay ปิด List เพื่อให้มีเวลาคลิกรายการ
+                            setTimeout(() => setIsListOpen(false), 200); 
+                        }}
+                    />
+                </div>
+                <div className="pb-1 text-gray-500">
+                    <ChevronDown className="h-4 w-4" />
+                </div>
+            </div>
+
+            {isListOpen && filteredOptions.length > 0 && (
+                <div 
+                    className="absolute z-50 top-full mt-1 w-full bg-white shadow-2xl max-h-60 rounded-md ring-1 ring-black ring-opacity-10 overflow-auto"
+                >
+                    {filteredOptions.map((option, index) => (
+                    <div
+                            key={index}
+                            onClick={() => handleSelect(option)}
+                            className="p-3 text-sm text-gray-900 hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                            {option}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+    
+};
+
+const OfficeProfileCard = ({ office, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                
+                {/* Modal Header */}
+                <div className="p-4 bg-blue-600 text-white flex items-center justify-between">
+                    <h3 className="text-xl font-bold flex items-center">
+                        <Building2 size={24} className="mr-2"/> 
+                        รายละเอียดสำนักงาน
+                    </h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-white/20 transition">
+                        <ArrowLeft size={24} />
+                    </button>
+                </div>
+                
+                {/* Modal Content */}
+                <div className="p-6 space-y-4">
+                    {/* ชื่อและที่อยู่ */}
+                    <div className="space-y-1 pb-4 border-b">
+                        <h4 className="text-2xl font-extrabold text-gray-800">{office.name} <span className="text-base text-gray-500 font-normal ml-2">({office.initial})</span></h4>
+                        <p className="text-sm text-blue-600 font-semibold">{office.division}</p>
+                    </div>
+
+                    {/* ข้อมูลติดต่อหลัก */}
+                    <h4 className="font-bold text-gray-700 flex items-center pt-2">
+                        <Phone size={18} className="mr-2 text-blue-500"/> ข้อมูลติดต่อ
+                    </h4>
+                    <div className="space-y-2 pl-6">
+                        <div className="flex justify-between items-center text-sm border-b pb-1">
+                            <span className="text-gray-600">โทรศัพท์:</span>
+                            <span className="font-medium text-blue-600">{office.phone}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm border-b pb-1">
+                            <span className="text-gray-600">โทรสาร (Fax):</span>
+                            <span className="font-medium text-blue-600">{office.fax}</span>
+                        </div>
+                        <div className="flex items-center text-sm space-x-2 pt-2">
+                            <Mail size={16} className="text-gray-500 flex-shrink-0"/>
+                            <span className="text-gray-600 truncate">{office.email}</span>
+                        </div>
+                    </div>
+
+                    {/* ผู้ประสานงาน (ถ้ามี) */}
+                    {office.contact && (
+                        <div className="pt-4 border-t space-y-2">
+                            <h4 className="font-bold text-gray-700 flex items-center">
+                                <User size={18} className="mr-2 text-green-500"/> ผู้ประสานงานหลัก
+                            </h4>
+                            <div className="pl-6 space-y-1 text-sm">
+                                <p className="font-semibold text-gray-800">{office.contact.name}</p>
+                                <p className="text-gray-600">{office.contact.position}</p>
+                                <p className="text-green-600 font-medium">โทร: {office.contact.phone}</p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* ที่อยู่ */}
+                    <div className="pt-4 border-t space-y-2">
+                        <h4 className="font-bold text-gray-700 flex items-center">
+                            <MapPin size={18} className="mr-2 text-red-500"/> ที่ตั้งหน่วยงาน
+                        </h4>
+                        <p className="text-sm text-gray-600 pl-6">{office.address}</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Main Page Component ---
+export default function DepartmentSearchPage() {
+    // States สำหรับช่องค้นหา
+    const [divisionTerm, setDivisionTerm] = useState(''); // สังกัดหน่วยงาน
+    const [officeName, setOfficeName] = useState('');     // ชื่อสำนักงาน
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    // States สำหรับผลลัพธ์และการควบคุม Modal
+    const [isSearchAlertOpen, setIsSearchAlertOpen] = useState(false);
+    const [isSearchSuccessOpen, setIsSearchSuccessOpen] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+    const [filteredResults, setFilteredResults] = useState<OfficeDetail[]>([]);
+    const [isProfileCardOpen, setIsProfileCardOpen] = useState(false);
+    const [selectedOffice, setSelectedOffice] = useState<OfficeDetail | null>(null);
+    const handleRowClick = useCallback((office: OfficeDetail) => {
+        setSelectedOffice(office);
+        setIsProfileCardOpen(true);
+    }, []);
+
+    // 1. ดึงรายชื่อ Division ทั้งหมดที่ไม่ซ้ำกัน (สำหรับ Dropdown ช่องแรก)
+    const uniqueDivisions = useMemo(() => {
+        // ใช้ Set เพื่อให้ได้รายการที่ไม่ซ้ำกัน
+        const divisions = Array.from(new Set(officeData.map(office => office.division))).sort();
+        return divisions;
+    }, []);
+
+    // 2. กรองข้อมูลตาม Division ที่เลือกไว้ (เพื่อนำไปใช้ในช่องที่สอง)
+    // การกรองนี้จะเกิดขึ้นทุกครั้งที่ divisionTerm เปลี่ยน
+    const filteredByDivision = useMemo(() => {
+        const term = divisionTerm.trim().toLowerCase();
+        if (!term) return officeData; // ถ้าไม่มีการกรอก Division ให้ใช้ข้อมูลทั้งหมด
+
+        // กรองเฉพาะสำนักงานที่สังกัดตรงกับ Division ที่เลือกไว้
+        return officeData.filter(office => (
+            office.division.toLowerCase() === term // ต้องตรงเป๊ะเพื่อความแม่นยำของ Dependent Dropdown
+        ));
+    }, [divisionTerm]);
+
+    // 3. ดึงรายชื่อ Office Names ที่ไม่ซ้ำกันจากผลลัพธ์ที่ถูกกรอง (สำหรับ Dropdown ช่องที่สอง)
+    const officeNamesForDropdown = useMemo(() => {
+        const uniqueNames = new Set(filteredByDivision.map(office => office.name));
+        return Array.from(uniqueNames).sort();
+    }, [filteredByDivision]);
+
+    // Handle Change สำหรับช่อง Division (ต้อง Clear ช่อง Office Name)
+    const handleDivisionChange = useCallback((value) => {
+        setDivisionTerm(value);
+        // สำคัญ: Clear ชื่อสำนักงาน เมื่อเปลี่ยนสังกัด
+        setOfficeName(''); 
+    }, []);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        const divTerm = divisionTerm.trim().toLowerCase();
+        const officeTerm = officeName.trim().toLowerCase();
+
+        if (!divTerm && !officeTerm) {
+            // ต้องกรอกอย่างน้อยหนึ่งช่อง
+            setIsSearchAlertOpen(true);
+            return;
+        }
+
+        // Logic การค้นหาสุดท้าย:
+        // 1. เริ่มจากผลลัพธ์ที่ถูกกรองด้วย Division (ซึ่งมีการกรองแล้วใน filteredByDivision)
+        let finalResults = filteredByDivision;
+        
+        // 2. ถ้ามีการเลือก/พิมพ์ชื่อสำนักงาน ให้กรองซ้ำอีกครั้งในกลุ่มนั้น
+        if (officeTerm) {
+            finalResults = finalResults.filter(office => 
+                // *** FIX: เพิ่มการค้นหาจาก field initial (ชื่อย่อ) เข้าไปด้วย ***
+                office.name.toLowerCase().includes(officeTerm) || 
+                office.initial.toLowerCase().includes(officeTerm)
+            );
+        }
+        
+        // 3. ถ้าไม่มีการกรอกชื่อสำนักงาน แต่กรอกแค่สังกัดหน่วยงาน (ช่องแรก)
+        // finalResults ก็คือ filteredByDivision ทั้งหมด ซึ่งเป็นไปตามที่ต้องการแล้ว
+        
+        setFilteredResults(finalResults);
+        
+        // Show Success Modal
+        setShowResults(false);
+        setIsSearchSuccessOpen(true);
+    };
+
+    return (
+        <div className="flex-1 p-6 md:p-10 overflow-auto relative z-0">
+            
+            {/* Search Form */}
+            <div className="w-full max-w-7xl mx-auto bg-white shadow rounded-sm mb-8">
+                <div className="bg-[#0f3fa6] text-white p-4 flex items-center justify-center">
+                    <h2 className="text-lg font-medium flex items-center gap-2">
+                        <Building size={20} />
+                        ข้อมูลสำนักงาน
+                    </h2>
+                </div>
+                <form onSubmit={handleSearch} className="p-8 space-y-4">
+                    
+                    {/* 1. ช่อง สังกัดหน่วยงาน (Dropdown หลัก) */}
+                    <SearchableDropdown
+                        placeholder="สังกัดหน่วยงาน"
+                        icon={Building2}
+                        options={uniqueDivisions} 
+                        value={divisionTerm}
+                        onChange={handleDivisionChange}
+                        zIndex="z-30"
+                    />
+                    
+                    {/* 2. ช่อง ชื่อสำนักงาน (Dependent Dropdown) */}
+                    <div className="pt-4">
+                        <SearchableDropdown
+                            placeholder="ชื่อสำนักงาน"
+                            icon={Building}
+                            // ใช้รายการที่ถูกกรองแล้วจาก Division
+                            options={officeNamesForDropdown} 
+                            value={officeName}
+                            onChange={setOfficeName}
+                            zIndex="z-20"
+                            // เมื่อไม่มี divisionTerm ให้ปิดการค้นหา (Optional: สามารถให้ค้นหาได้อิสระก็ได้)
+                            // isDisabled={!divisionTerm} 
+                        />
+                    </div>
+
+                    <div className="pt-6">
+                        <button type="submit" className="w-full bg-[#ff9800] hover:bg-[#f57c00] text-white font-medium py-3 rounded shadow-sm flex items-center justify-center gap-2 transition-colors text-lg">
+                            <Search size={22} /> ค้นหาสำนักงาน
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {/* Results Table (ตารางผลลัพธ์) */}
+            {showResults && (
+                <div className="w-full max-w-7xl mx-auto bg-white shadow rounded-sm mb-10">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap">สังกัดหน่วยงาน</th>
+                                    <th className="p-4 font-semibold text-gray-600 ร text-sm whitespace-nowrap">ชื่อสำนักงาน (ย่อ)</th>
+                                    <th className="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap text-center">เบอร์โทรศัพท์</th>
+                                    <th className="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap text-center">แฟกซ์</th>
+                                    <th className="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap">อีเมล</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredResults.length > 0 ? (
+                                    filteredResults.map((office) => (
+                                        <tr key={office.id} onClick={() => handleRowClick(office)} 
+                className="group border-b hover:bg-blue-50 cursor-pointer transition-colors">
+                                            <td className="p-4 text-gray-500 min-w-[200px]">{office.division}</td>
+                                            <td className="p-4 font-bold text-gray-800 min-w-[300px]">{office.name} ({office.initial})</td>
+                                            <td className="p-4 text-center">
+                                                <span className="inline-block bg-[#eeeeee] text-gray-800 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
+                                                    {office.phone}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className="inline-block bg-[#eeeeee] text-gray-800 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
+                                                    {office.fax}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-blue-600 hover:underline cursor-pointer">{office.email}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-gray-500">
+                                            ไม่พบข้อมูลสำนักงานที่ตรงกับเงื่อนไขการค้นหา
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal แจ้งเตือนการค้นหา */}
+            {isSearchAlertOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 text-center">
+                        <p className="mb-6 text-lg text-gray-700">กรุณากรอกข้อมูลในช่องค้นหาอย่างน้อยหนึ่งช่อง</p>
+                        <button onClick={() => setIsSearchAlertOpen(false)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">ตกลง</button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal ค้นหาสำเร็จ */}
+            {isSearchSuccessOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 text-center">
+                        <div className="mb-4 flex justify-center"><CheckCircle size={48} className="text-green-500" /></div>
+                        <p className="mb-6 text-lg text-gray-700">พบข้อมูล <span className="font-bold text-green-600">{filteredResults.length}</span> รายการ</p>
+                        <button onClick={() => { setIsSearchSuccessOpen(false); setShowResults(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">ตกลง</button>
+                    </div>
+                </div>
+            )}
+
+            {isProfileCardOpen && selectedOffice && (
+                <OfficeProfileCard 
+                    office={selectedOffice} 
+                    onClose={() => setIsProfileCardOpen(false)} 
+                />
+            )}
+            
+        </div>
+    )
+}

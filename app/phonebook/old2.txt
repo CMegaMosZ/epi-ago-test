@@ -1,0 +1,883 @@
+return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate__animated animate__fadeInUp">
+                {/* Header Section */}
+                <div className="p-8 pb-4 text-center">
+                    <div className="w-20 h-20 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3 shadow-lg shadow-orange-100">
+                        <Fingerprint className="text-orange-600 -rotate-3" size={40} />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-800">Phonebook System</h1>
+                    <p className="text-gray-500 text-sm mt-1">สำนักงานอัยการสูงสุด</p>
+                </div>
+
+                {/* Tab Selector */}
+                <div className="flex p-1 bg-gray-100 mx-8 rounded-xl mb-6">
+                    <button 
+                        onClick={() => setActiveTab('USER')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'USER' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        ประชาชนทั่วไป
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('ADMIN')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'ADMIN' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        เจ้าหน้าที่ (Admin)
+                    </button>
+                </div>
+
+                {/* Login Form */}
+                <form onSubmit={handleLogin} className="p-8 pt-0 space-y-6">
+                    {activeTab === 'USER' ? (
+                        // FORM USER
+                        <div className="space-y-6 animate__animated animate__fadeIn">
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="เลขบัตรประชาชน 13 หลัก"
+                                    value={idCard}
+                                    onChange={(e) => setIdCard(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="รหัสผ่าน"
+                                    value={passwordValue}
+                                    onChange={(e) => setPasswordValue(e.target.value)}
+                                    className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        // FORM ADMIN (ส่วนที่แก้ไข)
+                        <div className="space-y-6 animate__animated animate__fadeIn">
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Username"
+                                    value={adminUsername}
+                                    onChange={(e) => setAdminUsername(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400" size={20} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="รหัสผ่าน"
+                                    value={adminPassword}
+                                    onChange={(e) => setAdminPassword(e.target.value)}
+                                    className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <button 
+                        type="submit"
+                        disabled={isLoading}
+                        className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 ${activeTab === 'USER' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'}`}
+                    >
+                        {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+                    </button>
+
+                    <div className="text-center space-y-2">
+                        <button 
+                            type="button"
+                            onClick={() => setIsForgetPasswordOpen(true)}
+                            className="text-sm text-gray-500 hover:text-orange-600 transition-colors"
+                        >
+                            ลืมรหัสผ่าน?
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation' 
+import Link from 'next/link'
+import { Fingerprint, Lock, User, Eye, EyeOff, ShieldAlert } from 'lucide-react'
+import Swal from 'sweetalert2'
+
+
+export default function LoginPage() {
+    const router = useRouter(); 
+    const [activeTab, setActiveTab] = useState<'USER' | 'ADMIN'>('USER'); 
+    const [isForgetPasswordOpen, setIsForgetPasswordOpen] = useState(false);
+    // --- USER STATES AND LOGIC ---
+    const [idCard, setIdCard] = useState('')
+    const [isIdFocused, setIsIdFocused] = useState(false) 
+    const [idError, setIdError] = useState('') 
+    const isIdActive = isIdFocused || idCard.length > 0
+    const isIdError = idError.length > 0; 
+    const [currentPage, setCurrentPage] = useState<'login' | 'register'>('login');
+
+    const [passwordValue, setPasswordValue] = useState('');
+    const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+    const isPasswordActive = isPasswordFocused || passwordValue.length > 0;
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleForgetPassword = async (e: React.MouseEvent) => {
+        e.preventDefault();
+
+        const { value: idCard } = await Swal.fire({
+            title: "ลืมรหัสผ่าน",
+            html: `
+                <div style="text-align: left; margin-bottom: 10px;">
+                    <p style="font-weight: bold; margin-bottom: 5px;">ขั้นตอน:</p>
+                    <ol style="padding-left: 20px;">
+                        <li>ระบุหมายเลขบัตรประชาชนในช่องด้านล่าง</li>
+                        <li>กดปุ่ม "ลืมรหัสผ่าน" ระบบจะส่งข้อมูลไปให้ที่อีเมลที่ได้ลงทะเบียนไว้</li>
+                    </ol>
+                </div>
+            `,
+            // icon: "question",
+            input: "text", // ใช้ input type text
+            inputLabel: "หมายเลขบัตรประชาชน",
+            inputPlaceholder: "ระบุหมายเลขบัตรประชาชน 13 หลัก",
+            showCancelButton: true,
+            confirmButtonText: 'ลืมรหัสผ่าน',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true,
+            preConfirm: (id) => {
+                // ตรวจสอบความถูกต้องของบัตรประชาชนก่อนกดส่ง
+                if (!id || id.length !== 13 || !/^\d+$/.test(id)) {
+                    Swal.showValidationMessage(`กรุณาระบุหมายเลขบัตรประชาชนให้ครบ 13 หลัก`);
+                    return false;
+                }
+                return id;
+            }
+        });
+
+        if (idCard) {
+            Swal.fire({
+                title: "ส่งข้อมูลแล้ว",
+                text: `ระบบได้ส่งข้อมูลการตั้งรหัสผ่านใหม่ไปยังอีเมลที่ลงทะเบียนไว้ของหมายเลขบัตรประชาชน ${idCard} เรียบร้อยแล้ว (Simulated)`,
+                icon: "success",
+                confirmButtonText: "ตกลง"
+            });
+        }
+    };
+
+    // --- ADMIN STATES AND LOGIC (✅ NEW) ---
+    const [adminUsername, setAdminUsername] = useState('');
+    const [isAdminUsernameFocused, setIsAdminUsernameFocused] = useState(false);
+    const [adminUsernameError, setAdminUsernameError] = useState('');
+
+    const [adminPassword, setAdminPassword] = useState('');
+    const [isAdminPasswordFocused, setIsAdminPasswordFocused] = useState(false);
+    const [adminPasswordError, setAdminPasswordError] = useState('');
+
+    const isAdminUsernameActive = isAdminUsernameFocused || adminUsername.length > 0;
+    const isAdminPasswordActive = isAdminPasswordFocused || adminPassword.length > 0;
+    const isAdminUsernameError = adminUsernameError.length > 0;
+    const isAdminPasswordError = adminPasswordError.length > 0;
+    
+    // --- SUBMISSION HANDLERS ---
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (activeTab === 'ADMIN') {
+    handleAdminLogin();
+  } else {
+    handleLogin();
+  }
+};
+    
+const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+        // --- กรณี: เข้าสู่ระบบฝั่ง USER (ประชาชน) ---
+        if (activeTab === 'USER') {
+            if (!idCard || !passwordValue) {
+                Swal.fire("กรุณากรอกข้อมูล", "กรุณากรอกเลขบัตรประชาชนและรหัสผ่าน", "warning");
+                setIsLoading(false);
+                return;
+            }
+
+            // ... (Logic เดิมของ User หรือเรียก API User ตรงนี้) ...
+            
+            // จำลองการสำเร็จของ User
+            Swal.fire({
+                    icon: 'success',
+                    title: 'เข้าสู่ระบบสำเร็จ',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    router.push('/phonebook/admin/dashboard');
+                });
+        } 
+        
+        // --- กรณี: เข้าสู่ระบบฝั่ง ADMIN (เจ้าหน้าที่) ---
+        else {
+            // 1. ตรวจสอบว่ากรอกข้อมูลครบไหม
+            if (!adminUsername || !adminPassword) {
+                Swal.fire("ข้อมูลไม่ครบถ้วน", "กรุณากรอก Username และ Password", "warning");
+                setIsLoading(false);
+                return;
+            }
+
+            // ---------------------------------------------
+            // 🟢 จุดเชื่อมต่อ API ฝั่ง Admin (แก้ไขตรงนี้)
+            // ---------------------------------------------
+            /* const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: adminUsername, password: adminPassword })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                // Login สำเร็จ -> ไปหน้า Dashboard
+                router.push('/phonebook/admin/dashboard');
+            } else {
+                Swal.fire("เข้าสู่ระบบไม่สำเร็จ", data.message || "Username หรือ Password ไม่ถูกต้อง", "error");
+            }
+            */
+
+            // --- (จำลองการทำงานระหว่างยังไม่ต่อ API จริง) ---
+            if (adminUsername === 'admin' && adminPassword === '1234') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'เข้าสู่ระบบสำเร็จ',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    router.push('/phonebook/admin/dashboard');
+                });
+            } else {
+                Swal.fire("ผิดพลาด", "Username หรือ Password ไม่ถูกต้อง (Mock: admin/1234)", "error");
+            }
+            // ---------------------------------------------
+        }
+    } catch (error) {
+        console.error("Login Error:", error);
+        Swal.fire("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการเชื่อมต่อระบบ", "error");
+    } finally {
+        setIsLoading(false);
+    }
+};
+    //     if (idCard.length === 0) {
+    //         setIdError('กรุณากรอกข้อมูล'); 
+    //         return; 
+    //     }
+        
+    //     setIdError('');
+    //     router.push('/phonebook/auth/personal'); 
+    // }
+
+// ✅ 2. ฟังก์ชันสำหรับฝั่ง ADMIN
+const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!idCard.trim() || !passwordValue.trim()) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'แจ้งเตือน',
+            text: 'กรุณากรอก username และ password', // ข้อความตามที่ต้องการ
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#ff9800' // สีส้มตาม Theme ของคุณ
+        });
+        return; // หยุดการทำงาน ไม่ต้องไป fetch API
+    }
+    setIsLoading(true);
+
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: adminUsername,   // ✅ ใช้ของ ADMIN
+                password: adminPassword,   // ✅ ใช้ของ ADMIN
+                type: 'ADMIN'
+            })
+        });
+
+        const data = await response.json();
+        console.log("Full Data:", data);
+
+        if (response.ok && data.success) {
+            localStorage.setItem('userRole', data.role);
+            localStorage.setItem('userName', data.name);
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'เข้าสู่ระบบสำเร็จ',
+                text: '', //`ระดับสิทธิ์: ${data.role}
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            if (data.role === 'ADMIN') {
+                router.push('/phonebook/admin/dashboard');
+            } else if (data.role === 'UNIT_ADMIN') {
+                router.push('/phonebook/unitAdmin/officeInfo');
+            }
+        } else {
+            Swal.fire('ผิดพลาด', data.message || 'เข้าสู่ระบบไม่สำเร็จ', 'error');
+        }
+    } catch (error: any) {
+        Swal.fire('ผิดพลาด', error.message, 'error');
+    } finally {
+        setIsLoading(false);
+    }
+};
+
+
+return (
+    <div className="flex items-center justify-center min-h-screen p-4 sm:p-6 bg-[url('/login_background.jpg')] bg-cover bg-center bg-fixed">
+            {/* Card Login หลัก */}
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate__animated animate__fadeInUp">               
+                {/* Header/Banner */}
+                <div className="bg-[#ed6f00] p-6 text-white text-center">
+                    <h1 className="text-2xl font-bold">OAG e-Phonebook</h1>
+                    <p className="text-sm opacity-90 mt-1">ระบบสมุดโทรศัพท์ สำนักงานอัยการสูงสุด</p>
+                </div>
+
+                <div className="p-6">
+                    
+                    {/* Tabs (User/Admin) */}
+                    <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+                        <button
+                            onClick={() => setActiveTab('USER')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'USER' ? 'bg-[#ed8600] text-white shadow-md' : 'text-gray-600 hover:bg-white'}`}
+                        >
+                            USER
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('ADMIN')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'ADMIN' ? 'bg-[#ed8600] text-white shadow-md' : 'text-gray-600 hover:bg-white'}`}
+                        >
+                            ADMIN
+                        </button>
+                    </div>
+                
+                {/* EDITING */}
+
+                <form onSubmit=
+                {activeTab === 'USER' ? handleLogin : handleAdminLogin} className="space-y-6">
+                        {/* Slide Container Wrapper: ต้องใช้ overflow-hidden */}
+                        <div className="overflow-hidden">
+                            <div 
+                                className={`flex transition-transform duration-300 ease-in-out`}
+                                // เลื่อนตาม activeTab: USER=0%, ADMIN=-50%
+                                style={{ 
+                                    width: '200%', 
+                                    transform: activeTab === 'USER' ? 'translateX(0%)' : 'translateX(-50%)'
+                                }} 
+                            >
+                                {/* 1. USER LOGIN CONTENT (ครึ่งซ้าย - w-1/2) */}
+                                <div className="w-1/2 pr-2 flex-shrink-0 space-y-4"> 
+                                    
+                                    {/* ID Card Input Field */}
+                                    <div className={`relative pt-4`}> 
+                                        <label 
+                                            htmlFor="id_card" 
+                                            className={`absolute left-0 transition-all pointer-events-none ${isIdActive ? 'top-1 text-xs text-gray-500' : 'top-3 text-sm text-gray-400'}`}
+                                        >
+                                            หมายเลขบัตรประชาชน
+                                        </label>
+                                        <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1"> 
+                                            <input
+                                                type="text"
+                                                id="id_card"
+                                                value={idCard}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                                    setIdCard(value);
+                                                    if (idError) setIdError(''); 
+                                                }}
+                                                onFocus={() => setIsIdFocused(true)}
+                                                onBlur={() => setIsIdFocused(false)}
+                                                className="w-full outline-none bg-transparent text-gray-700"
+                                                maxLength={13}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                        {isIdError && <p className="text-xs text-red-500 mt-1">{idError}</p>}
+                                    </div>
+                                    {/* ตัวนับ 0 / 13 */}
+                                    <div className="text-right text-xs pr-1 mt-[-10px] text-gray-400">
+                                        {idCard.length} / 13
+                                    </div>
+
+                                    {/* Password Input Field */}
+                                    <div className={`relative pt-4`}> 
+                                        <label 
+                                            htmlFor="password" 
+                                            className={`absolute left-0 transition-all pointer-events-none ${isPasswordActive ? 'top-1 text-xs text-gray-500' : 'top-3 text-sm text-gray-400'}`}
+                                        >
+                                            รหัสผ่าน
+                                        </label>
+                                        <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1">                                            
+                                            <input
+                                                type="password"
+                                                id="password"
+                                                value={passwordValue}
+                                                onChange={(e) => setPasswordValue(e.target.value)}
+                                                onFocus={() => setIsPasswordFocused(true)}
+                                                onBlur={() => setIsPasswordFocused(false)}
+                                                className="w-full outline-none bg-transparent text-gray-700"
+                                                autoComplete="current-password"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            รหัสผ่านเริ่มต้น = วันเดือนปีเกิด
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">(ตัวอย่าง : 1 มิถุนายน 2537 รหัสผ่าน 01062537)</p>
+                                    </div>
+
+                                    {/* ✅ USER: Forgot Password & Register Link */}
+                                    <div className="flex justify-between items-center text-sm pt-2">
+                                        <a 
+                                            href="#" 
+                                            onClick={handleForgetPassword} 
+                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium" 
+                                        >
+                                            ลืมรหัสผ่าน?
+                                        </a>
+                                        <Link 
+                                            href="/register" 
+                                            className="text-xs text-green-600 hover:text-green-800 hover:underline transition-colors font-medium" 
+                                        >
+                                            ลงทะเบียน
+                                        </Link>
+                                    </div>
+                                    
+                                    {/* ✅ USER: Privacy Notice Link */}
+                                    <div className="text-right text-xs space-y-1">
+                                        <a href="/data_privacynotice.pdf" className="text-blue-500 block hover:underline">
+                                            <Lock size={12} className="inline mr-1 -mt-0.5" /> PRIVACY NOTICE
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* 2. ADMIN LOGIN CONTENT (ครึ่งขวา - w-1/2) */}
+                                <div className="w-1/2 pl-2 flex-shrink-0 space-y-4"> 
+                                    
+                                    {/* Admin Username Input Field */}
+                                    <div className={`relative pt-4`}>
+                                        <label 
+                                            htmlFor="admin_username" 
+                                            className={`absolute left-0 transition-all pointer-events-none ${isAdminUsernameActive ? 'top-1 text-xs text-gray-500' : 'top-3 text-sm text-gray-400'}`}
+                                        >
+                                            Username
+                                        </label>
+                                        <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1">
+                                            <input
+                                                type="text"
+                                                id="admin_username"
+                                                value={adminUsername}
+                                                onChange={(e) => setAdminUsername(e.target.value)}
+                                                onFocus={() => setIsAdminUsernameFocused(true)}
+                                                onBlur={() => setIsAdminUsernameFocused(false)}
+                                                className="w-full outline-none bg-transparent text-gray-700"
+                                                autoComplete="username"
+                                            />
+                                        </div>
+                                        {adminUsernameError && <p className="text-xs text-red-500 mt-1">{adminUsernameError}</p>}
+                                    </div>
+
+                                    {/* Admin Password Input Field */}
+                                    <div className={`relative pt-4`}>
+                                        <label 
+                                            htmlFor="admin_password" 
+                                            className={`absolute left-0 transition-all pointer-events-none ${isAdminPasswordActive ? 'top-1 text-xs text-gray-500' : 'top-3 text-sm text-gray-400'}`}
+                                        >
+                                            Password
+                                        </label>
+                                        <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1">                                            <input
+                                                type="password"
+                                                id="admin_password"
+                                                value={adminPassword}
+                                                onChange={(e) => setAdminPassword(e.target.value)}
+                                                onFocus={() => setIsAdminPasswordFocused(true)}
+                                                onBlur={() => setIsAdminPasswordFocused(false)}
+                                                className="w-full outline-none bg-transparent text-gray-700"
+                                                autoComplete="current-password"
+                                            />
+                                        </div>
+                                        {adminPasswordError && <p className="text-xs text-red-500 mt-1">{adminPasswordError}</p>}
+                                    </div>
+                                    
+                                    {/* ✅ ADMIN: Forgot Password & Register Link */}
+                                    <div className="flex justify-between items-center text-sm pt-2">
+                                        <a 
+                                            href="#" 
+                                            onClick={handleForgetPassword} 
+                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium" 
+                                        >
+                                            ลืมรหัสผ่าน?
+                                        </a>
+                                        <Link 
+                                            href="/register" 
+                                            className="text-xs text-green-600 hover:text-green-800 hover:underline transition-colors font-medium" 
+                                        >
+                                            ลงทะเบียน
+                                        </Link>
+                                    </div>
+
+                                    {/* ✅ ADMIN: Privacy Notice Link */}
+                                    <div className="text-right text-xs space-y-1">
+                                        <a href="/data_privacynotice.pdf" className="text-blue-500 block hover:underline">
+                                            <Lock size={12} className="inline mr-1 -mt-0.5" /> PRIVACY NOTICE
+                                        </a>                                    
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Login Button (อยู่ภายใน Form ทำให้ Submit ได้ง่าย) */}
+<button 
+                        type="submit"
+                        disabled={isLoading}
+                        className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 ${activeTab === 'USER' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'}`}
+                    >
+                        {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+                    </button>
+
+<button
+    type="submit"
+    // ✅ เช็ค Tab เพื่อเลือกใช้ฟังก์ชันให้ถูกตัว
+    disabled={isLoading}
+    className={`w-full font-semibold py-3 rounded-lg shadow-md transition-all duration-200 mt-4 text-lg
+        ${isLoading 
+            ? "bg-gray-400 cursor-not-allowed" 
+            : activeTab === 'USER'
+                ? "bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg active:scale-95" // 🔵 สีน้ำเงินสำหรับ User
+                : "bg-[#ff9800] hover:bg-[#f57c00] text-white hover:shadow-lg active:scale-95" // 🟠 สีส้มสำหรับ Admin
+        }`}
+>
+    {isLoading ? (
+        <div className="flex items-center justify-center space-x-2">
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>กำลังตรวจสอบ...</span>
+        </div>
+    ) : (
+        // ✅ เปลี่ยนข้อความบนปุ่มตามสิทธิ์
+        activeTab === 'USER' ? "เข้าสู่ระบบผู้ใช้งาน" : "เข้าสู่ระบบ Admin"
+    )}
+</button>
+                        
+                        {/* <button
+                            type="submit"
+                            className="w-full bg-[#ff9800] hover:bg-[#f57c00] text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 mt-4 text-lg" 
+                        >
+                            เข้าสู่ระบบ
+                        </button> */}
+                    </form>
+                </div>
+            </div>
+            
+            {/* ✅ Forget Password Modal Component */}
+            {isForgetPasswordOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden">
+                        
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-gray-200">
+                            <h3 className="text-xl font-semibold text-gray-800">ลืมรหัสผ่าน</h3>
+                            <p className="text-sm text-gray-500">(บุคลากรสำนักงานอัยการสูงสุด)</p>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-5 space-y-4">
+                            <h4 className="font-medium text-gray-700">ขั้นตอน</h4>
+                            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
+                                <li>ระบุหมายเลขบัตรประชาชน</li>
+                                <li>กดปุ่ม `ลืมรหัสผ่าน` ระบบจะส่งข้อมูลไปให้ที่อีเมลที่ได้ลงทะเบียนไว้</li>
+                            </ol>
+                            
+                            {/* Input Field (หมายเลขบัตรประชาชน) */}
+                            <div className="relative pt-4 pb-2">
+<label htmlFor="modal-idcard" className="block text-sm font-medium text-gray-700 mb-1">
+            หมายเลขบัตรประชาชน
+        </label>
+
+<input
+            type="text"
+            id="modal-idcard"
+            // ใช้ State idCard และ Setter ที่มีอยู่แล้ว
+            value={idCard}
+            onChange={(e) => {
+                // อนุญาตให้กรอกเฉพาะตัวเลข และจำกัดความยาว
+                const value = e.target.value.replace(/\D/g, '').slice(0, 13);
+                setIdCard(value);
+            }}
+            maxLength={13}
+            placeholder="ระบุหมายเลขบัตรประชาชน 13 หลัก"
+            className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-orange-500 focus:border-blue-200 text-sm"
+        />
+                            </div>
+
+                            {/* ตัวนับ 0 / 13 ด้านล่าง Input Field ของ Modal */}
+<div className="text-right text-xs pr-1 mt-1 text-gray-400">
+            {idCard.length} / 13
+        </div>
+                        </div>
+
+                        {/* Modal Footer (Buttons) */}
+                        <div className="p-5 flex justify-end space-x-3 bg-gray-50 border-t border-gray-200">
+                            <button 
+                                onClick={() => {
+                                    setIsForgetPasswordOpen(false);
+                                     // ปิด Modal หลังจากส่งข้อมูล
+                                }}
+                                className="px-4 py-2 text-sm font-medium rounded shadow-sm transition bg-gray-300 text-gray-700 hover:bg-gray-400"
+                            >
+                                ลืมรหัสผ่าน
+                            </button>
+                            <button 
+                                onClick={() => setIsForgetPasswordOpen(false)}
+                                className="px-4 py-2 text-sm font-medium rounded shadow-sm transition bg-red-500 text-white hover:bg-red-600"
+                            >
+                                ปิด
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+                {/* --- MAIN FORM --- */}
+                <form onSubmit={handleLogin} className="p-8 pt-0 space-y-5">
+                    <div className="space-y-4 animate__animated animate__fadeIn">
+                        {/* INPUT 1: Username / ID Card */}
+                        {/* <div className="relative group">
+                            <div className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${activeTab === 'USER' ? 'text-blue-400' : 'text-orange-400'}`}>
+                                <User size={20} />
+                            </div>
+                            <input 
+                                type="text" 
+                                placeholder={activeTab === 'USER' ? "หมายเลขบัตรประชาชน" : "Username"}
+                                value={activeTab === 'USER' ? idCard : adminUsername}
+                                onChange={(e) => activeTab === 'USER' ? setIdCard(e.target.value) : setAdminUsername(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 outline-none transition-all focus:ring-opacity-50 focus:border-transparent"
+                                style={{ focusRingColor: activeTab === 'USER' ? '#2563eb' : '#ea580c' } as any}
+                            />
+                        </div> */}
+                            <div className={`relative pt-4`}> 
+                                <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1"> 
+                                    {activeTab === 'USER' ? (
+                                        /* --- ส่วนของ USER (เลขบัตรประชาชน) --- */
+                                        <input
+                                            type="text"
+                                            id="id_card"
+                                            placeholder="หมายเลขบัตรประชาชน"
+                                            value={idCard}
+                                            onChange={(e) => {
+                                                // กรองเฉพาะตัวเลข 13 หลัก
+                                                const value = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                                setIdCard(value);
+                                                if (idError) setIdError(''); 
+                                            }}
+                                            onFocus={() => setIsIdFocused(true)}
+                                            onBlur={() => setIsIdFocused(false)}
+                                            className="w-full outline-none bg-transparent text-gray-700"
+                                            maxLength={13}
+                                            autoComplete="off"
+                                        />
+                                    ) : (
+                                        /* --- ส่วนของ ADMIN (Username ทั่วไป) --- */
+                                        <input
+                                            type="text"
+                                            id="admin_username"
+                                            placeholder="ผู้ใช้งาน (Username)"
+                                            value={adminUsername}
+                                            onChange={(e) => {
+                                                // พิมพ์ได้ทุกตัวอักษร ไม่โดนกรองตัวเลข
+                                                setAdminUsername(e.target.value);
+                                            }}
+                                            className="w-full outline-none bg-transparent text-gray-700"
+                                            autoComplete="off"
+                                        />
+                                    )}
+                                </div>
+                                
+                                {/* แสดง Error เฉพาะฝั่ง User ถ้ามี */}
+                                {activeTab === 'USER' && isIdError && (
+                                    <p className="text-xs text-red-500 mt-1">{idError}</p>
+                                )}
+                            </div>
+
+                            {/* ✅ ตัวนับจะแสดงเฉพาะหน้า USER เท่านั้น */}
+                            {activeTab === 'USER' && (
+                                <div className="text-right text-xs pr-1 mt-[-10px] text-gray-400">
+                                    {idCard.length} / 13
+                                </div>
+                            )}
+
+                        {/* INPUT 2: Password with Single Eye Icon */}
+                        <div className="relative pt-4">
+    <div className="flex items-center border-b-2 border-gray-300 focus-within:border-[#0f3fa6] transition-colors pb-1">
+        {activeTab === 'USER' ? (
+            /* --- รหัสผ่านสำหรับ USER --- */
+            <div className="relative w-full">      {/* <-- ทำ container ให้เป็น relative + w-full */}
+                <input
+                    type={showPassword ? "text" : "password"}
+                    id="password_user"
+                    placeholder="รหัสผ่าน"
+                    value={passwordValue}
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    className="w-full outline-none bg-transparent text-gray-700 pr-10"  /* pr-10 ให้เว้นที่สำหรับไอคอน */
+                />
+
+                {/* ปุ่มตาให้อยู่ใน container เดียวกัน เพื่อให้ right-0 ถึงขอบขวาสุด */}
+                {passwordValue.length > 0 && (
+                    <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0f3fa6] transition-colors p-1"
+                    >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                )}
+                </div>
+        ) : (
+            /* --- รหัสผ่านสำหรับ ADMIN --- */
+            <div className="relative w-full flex items-center">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    id="password_admin"
+                    placeholder="รหัสผ่าน"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full outline-none bg-transparent text-gray-700 pr-10"
+                />
+                {/* แสดงดวงตาเฉพาะเมื่อมีการพิมพ์ */}
+                {adminPassword.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0f3fa6] transition-colors p-1">
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                )}
+                </div>
+                )}
+            </div>
+        </div>
+        {/* --- ส่วนข้อความที่อยู่นอกเส้น (แสดงเฉพาะ USER) --- */}
+    {activeTab === 'USER' && (
+        <div className="mt-2 space-y-0.5 animate__animated animate__fadeIn">
+            <p className="text-[13px] text-gray-900 font-medium">
+                *รหัสผ่านเริ่มต้น คือ วันเดือนปีเกิด
+            </p>
+            <p className="text-[12px] text-gray-800">
+                (ตัวอย่าง : 1 มกราคม 2540 รหัสผ่านคือ 01012540)
+            </p>
+        </div>
+    )}
+    </div>
+
+                    {/* SUBMIT BUTTON */}
+                    <button type="submit" disabled={isLoading}
+                        className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center ${activeTab === 'USER' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-100'}`}>
+                        {isLoading ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                กำลังประมวลผล...
+                            </>
+                        ) : 'เข้าสู่ระบบ'}
+                    </button>
+
+                    {/* --- FOOTER LINKS --- */}
+                    <div className="text-center pt-2 px-1">
+    {activeTab === 'USER' ? (
+        /* บรรทัดสำหรับ USER: ลงทะเบียน (ซ้าย) | ลืมรหัสผ่าน (ขวา) */
+        <div className="flex items-center justify-between mb-6 animate__animated animate__fadeIn">
+            <p className="text-sm text-gray-600">
+                <Link href="/register" className="text-blue-600 font-bold hover:underline">
+                    ลงทะเบียน
+                </Link>
+            </p>
+            <button 
+                type="button" 
+                onClick={() => setIsForgetPasswordOpen(true)}
+                className="text-sm text-orange-500 hover:text-red-600 transition-colors font-medium hover:underline">
+                ลืมรหัสผ่าน
+            </button>
+        </div>
+    ) : (
+        /* บรรทัดสำหรับ ADMIN: จัดลืมรหัสผ่านไว้ฝั่งขวาอย่างเดียว (หรือตามความเหมาะสม) */
+        <div className="flex items-center justify-between mb-6 animate__animated animate__fadeIn">
+            <p className="text-sm text-gray-600">
+                <Link href="/register" className="text-blue-600 font-bold hover:underline">
+                    ลงทะเบียน
+                </Link>
+            </p>
+            <button 
+                type="button" 
+                onClick={() => setIsForgetPasswordOpen(true)}
+                className="text-sm text-orange-500 hover:text-red-600 transition-colors font-medium hover:underline">
+                ลืมรหัสผ่าน
+            </button>
+        </div>
+    )}
+    
+    {/* Privacy Notice (อยู่กึ่งกลางด้านล่างสุด) */}
+    <div className="flex justify-center border-t border-gray-100 pt-4">
+        <Link href="/privacy-notice" className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors flex items-center uppercase tracking-widest font-semibold">
+            <ShieldAlert size={12} className="mr-1.5" />
+            Privacy Notice
+        </Link>
+    </div>
+</div>
+                </form>
+
+    const initialRequests = [
+ //full  
+    { id: 1, name: 'นายสมชาย ใจดี', idCard: '1100100223344', title: 'นาย' , firstName: 'สมชาย' , lastName: 'ใจดี', office: 'สำนักงานคดีอาญา', position: 'นิติกร',  phone: '081-234-5678', attached: 'click', status: 'PENDING' },
+    {id: 2, name: 'นางสาวใฝ่เรียน รู้จริง', idCard: '3200500112233', title: 'นางสาว', firstName: 'ใฝ่เรียน', lastName: 'รู้จริง', office: 'สำนักงานคดีแพ่ง', position: 'นิติกร',  phone: '081-234-5678', attached: 'click', status: 'PENDING' },
+    {id: 3, name: 'นายสมชาย ใจดี', idCard: '1104400556677', title: 'นาย', firstName: 'สมชาย', lastName: 'ใจดี', office: 'สำนักงานคดีอาญา', position: 'พนักงานขับรถยนต์',  phone: '081-234-5678', attached: 'click', status: 'PENDING' },
+    {id: 4, name: 'นางมาร ร้าย', idCard: '1900100100234', title: 'นาง' , firstName: 'มาร' , lastName: 'ร้าย', office: 'สำนักเทคโนฯ', position: 'นักวิชาการคอมฯ', phone:'087-654-4561', attached: 'click', status: 'APPROVED' }
+    
+    { id: 1, name: 'นายสมชาย ใจดี', idCard: '1100100223344', phone: '081-234-5678', office: 'สำนักงานคดีอาญา', date: '2026-01-14 09:30', status: 'PENDING' },
+    { id: 2, name: 'นางสาวใฝ่เรียน รู้จริง', idCard: '3200500112233', phone: '089-888-9999', office: 'สำนักงานคดีแพ่ง', date: '2026-01-14 10:15', status: 'PENDING' },
+    { id: 3, name: 'นายขยัน ทำงาน', idCard: '1104400556677', phone: '085-111-2222', office: 'สำนักงานคดีแรงงาน', date: '2026-01-13 15:45', status: 'PENDING' },
+    ]
+
+                    <th className="px-6 py-4 text-left">เลขบัตรประชาชน</th>
+                    <th className="px-6 py-4 text-left">ประเภทสมาชิก</th>
+                    <th className="px-6 py-4 text-left">คำนำหน้า</th>
+                    <th className="px-6 py-4 text-left">ชื่อ</th>
+                    <th className="px-6 py-4 text-left">นามสกุล</th>
+                    <th className="px-6 py-4 text-left">สำนักงาน</th>
+                    <th className="px-6 py-4 text-left">ตำแหน่ง</th>
+                    <th className="px-6 py-4 text-left">เบอร์โทรศัพท์</th>
+                    <th className="px-6 py-4 text-left">หลักฐานการสมัคร</th>
+                    <th className="px-6 py-4 text-right">อนุมัติ</th>
+
+
+                    <th className="px-6 py-4 text-left">ชื่อ-นามสกุล / หน่วยงาน</th>
+                    <th className="px-6 py-4 text-left">เลขบัตรประชาชน</th>
+                    <th className="px-6 py-4 text-left">เบอร์โทรศัพท์</th>
+                    <th className="px-6 py-4 text-left">วันที่สมัคร</th>
+                    <th className="px-6 py-4 text-right">ดำเนินการ</th>
