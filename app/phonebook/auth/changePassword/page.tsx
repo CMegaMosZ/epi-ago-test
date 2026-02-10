@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     Lock, CheckCircle, UserCircle, ArrowLeft
@@ -10,6 +11,7 @@ import Swal from 'sweetalert2'
 import 'animate.css';
 
 export default function ChangePasswordPage() {
+    const router = useRouter();
     const [formData, setFormData] = useState({
         oldPassword: '',
         newPassword: '',
@@ -26,26 +28,64 @@ export default function ChangePasswordPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // ... (Logic Validation คงเดิมตามที่คุณเขียนไว้) ...
-        if (!formData.oldPassword || !formData.newPassword || !formData.confirmNewPassword || !formData.email) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'กรุณากรอกข้อมูลให้ครบถ้วน',
-                confirmButtonColor: '#3b82f6',
-                            showClass: {
-                                popup: `animate__animated
-                                animate__bounceIn
-                                animate__faster`},
-                            hideClass: {
-                                popup: `animate__animated
-                                animate__fadeOut
-                                animate__faster`}
-            });
+
+        // 1. Validation เบื้องต้น (ตามที่คุณทำไว้)
+        if (!formData.oldPassword || !formData.newPassword || !formData.confirmNewPassword) {
+            Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบถ้วน', confirmButtonColor: '#3b82f6' });
             return;
         }
-        setIsPasswordChanged(true);
+
+        if (formData.newPassword !== formData.confirmNewPassword) {
+            Swal.fire({ icon: 'error', title: 'รหัสผ่านใหม่ไม่ตรงกัน', confirmButtonColor: '#ef4444' });
+            return;
+        }
+
+        // 2. ส่งข้อมูลไปที่ Backend
+        try {
+            // ดึง username จาก localStorage (ที่เก็บไว้ตอน Login)
+            const username = localStorage.getItem('username'); 
+            
+            if (!username) {
+                Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลผู้ใช้งาน', text: 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง' });
+                return;
+            }
+
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    oldPassword: formData.oldPassword,
+                    newPassword: formData.newPassword
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'เปลี่ยนรหัสผ่านสำเร็จ!',
+                    text: 'กรุณาเข้าสู่ระบบใหม่อีกครั้งด้วยรหัสผ่านใหม่',
+                    confirmButtonColor: '#10b981'
+                }).then(() => {
+                    // ล้าง Session และกลับไปหน้า Login
+                    localStorage.clear();
+                    router.push('/login');
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ล้มเหลว',
+                    text: result.message,
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้' });
+        }
     };
 
     return (

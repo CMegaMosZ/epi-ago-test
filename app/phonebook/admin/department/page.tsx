@@ -1,22 +1,25 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import 'animate.css';
+import { useRouter } from 'next/navigation'
 import { 
     Search, Building, CheckCircle, ChevronDown, Building2, 
-    Phone, Mail, MapPin, User, ArrowLeft, X, FileSearchCorner
+    Phone, Mail, MapPin, User, ArrowLeft, X, FileSearchCorner, UserSearch
 } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import Swal from 'sweetalert2'
 
 // --- Type Definitions ---
 interface OfficeDetail {
     id: number;
-    officeName: string;      // ชื่อสำนักงาน
+    office: string;      // ชื่อสำนักงาน
     initial: string;   // ชื่อย่อ
     phone: string;     // เบอร์โทรศัพท์กลาง
     fax: string;       // เบอร์แฟกซ์
     email: string;     // อีเมลกลาง
-    address: string;
+    addr: string;      // ที่อยู่สำนักงาน
     division: string;  // สังกัดหน่วยงาน (Division)
     contact?: OfficeContact;
 }
@@ -31,12 +34,12 @@ interface OfficeContact {
 const officeData: OfficeDetail[] = [
     {
         id: 1,
-        officeName: 'สำนักงานเลขานุการผู้บริหาร',
+        office: 'สำนักงานเลขานุการผู้บริหาร',
         initial: 'สลบ.',
         phone: '0-2142-1701',
         fax: '0-2142-1799',
         email: 'cesd@ago.go.th',
-        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4',
+        addr: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 4',
         division: 'สำนักงานเลขาธิการ',
         contact: {
             name: 'นายสมชาย ใจดี',
@@ -46,12 +49,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 2,
-        officeName: 'สำนักบริหารกลาง',
+        office: 'สำนักบริหารกลาง',
         initial: 'สบก.',
         phone: '0-2142-1552',
         fax: '0-2143-9546',
         email: 'gad@ago.go.th',
-        address: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 3',
+        addr: 'อาคารราชบุรีดิเรกฤทธิ์ ชั้น 3',
         division: 'สำนักงานบริหารกลาง',
         contact: {
             name: 'นางสาวกานดา อุ่นใจ',
@@ -61,12 +64,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 3,
-        officeName: 'สำนักงานอัยการจังหวัดนนทบุรี',
+        office: 'สำนักงานอัยการจังหวัดนนทบุรี',
         initial: 'สอจ.นนทบุรี',
         phone: '0-2968-3000',
         fax: '0-2968-3001',
         email: 'nontburi@ago.go.th',
-        address: 'ศาลากลางจังหวัดนนทบุรี',
+        addr: 'ศาลากลางจังหวัดนนทบุรี',
         division: 'สำนักงานอัยการภาค 1',
         contact: {
             name: 'นายปรีชา สุขสันต์',
@@ -76,12 +79,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 4,
-        officeName: 'สำนักงานการสอบสวน',
+        office: 'สำนักงานการสอบสวน',
         initial: 'สกส.',
         phone: '0-2434-8323#7',
         fax: '0-2434-8328',
         email: 'doi@ago.go.th',
-        address: 'อาคารถนนบรมราชชนนี เลขที่ 73/1 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กรุงเทพมหานคร',
+        addr: 'อาคารถนนบรมราชชนนี เลขที่ 73/1 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กรุงเทพมหานคร',
         division: 'สำนักงานการสอบสวน',
         contact: {
             name: 'นายโสภล สวนแตง',
@@ -91,12 +94,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 5,
-        officeName: 'สำนักงานอัยการจังหวัดตรัง',
+        office: 'สำนักงานอัยการจังหวัดตรัง',
         initial: 'สอจ.ตรัง',
         phone: '0-7521-1233',
         fax: '0-7521-1233',
         email: 'trang@ago.go.th',
-        address: 'สำนักงานอัยการจังหวัดตรัง 19/2 ถนนวิเศษกุล  ตำบลทับเที่ยง อำเภอเมืองตรัง จังหวัดตรัง',
+        addr: 'สำนักงานอัยการจังหวัดตรัง 19/2 ถนนวิเศษกุล  ตำบลทับเที่ยง อำเภอเมืองตรัง จังหวัดตรัง',
         division: 'สำนักงานอัยการภาค 9',
         contact: {
             name: 'นายชายชาญ ขันละมัย',
@@ -106,12 +109,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 6,
-        officeName: 'สำนักงานอัยการจังหวัดสงขลา',
+        office: 'สำนักงานอัยการจังหวัดสงขลา',
         initial: 'สอจ.สงขลา',
         phone: '0-7431-3722',
         fax: '0-7431-3742',
         email: 'sk@ago.go.th',
-        address: 'สำนักงานอัยการจังหวัดสงขลา อาคารสำนักงานอัยการภาค 9 ชั้น 2 ถนนแหลมสนอ่อน ตำบลบ่อยาง อำเภอเมือง จังหวัดสงขลา',
+        addr: 'สำนักงานอัยการจังหวัดสงขลา อาคารสำนักงานอัยการภาค 9 ชั้น 2 ถนนแหลมสนอ่อน ตำบลบ่อยาง อำเภอเมือง จังหวัดสงขลา',
         division: 'สำนักงานอัยการภาค 9',
         contact: {
             name: 'นายสาม สมิหลา',
@@ -121,12 +124,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 7,
-        officeName: 'ห้องรองอัยการสูงสุด (นายปรีชา สุดสงวน)',
+        office: 'ห้องรองอัยการสูงสุด (นายปรีชา สุดสงวน)',
         initial: 'รอส.ปรีชา',
         phone: '0-2142-1584',
         fax: ' ',
         email: 'dag5@ago.go.th',
-        address: 'ศูนย์ราชการเฉลิมพระเกียรติ 80 พรรษา 5 ธันวาคม 2550 อาคารราชบุรีดิเรกฤทธิ์ ชั้น 9 เลขที่ 120 หมู่ที่ 3 ถ.แจ้งวัฒนะ แขวงทุ่งสองห้อง เขตหลักสี่ กรุงเทพมหานคร',
+        addr: 'ศูนย์ราชการเฉลิมพระเกียรติ 80 พรรษา 5 ธันวาคม 2550 อาคารราชบุรีดิเรกฤทธิ์ ชั้น 9 เลขที่ 120 หมู่ที่ 3 ถ.แจ้งวัฒนะ แขวงทุ่งสองห้อง เขตหลักสี่ กรุงเทพมหานคร',
         division: 'สำนักงานอัยการสูงสุด',
         contact: {
             name: 'นายปรีโป้ สุดอร่อย',
@@ -136,12 +139,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 8,
-        officeName: 'สำนักงานอัยการจังหวัดเชียงใหม่',
+        office: 'สำนักงานอัยการจังหวัดเชียงใหม่',
         initial: 'สอจ.เชียงใหม่',
         phone: '0-5311-2559',
         fax: '0-5311-2550',
         email: 'cm@ago.go.th',
-        address: 'ถ.โชตนา ต.ช้างเผือก อ.เมือง จ.เชียงใหม่',
+        addr: 'ถ.โชตนา ต.ช้างเผือก อ.เมือง จ.เชียงใหม่',
         division: 'สำนักงานอัยการภาค 5',
         contact: {
             name: 'นายเหนือดาว สว่างวงศ์',
@@ -151,12 +154,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 9,
-        officeName: 'สำนักงานอัยการจังหวัดนครราชสีมา',
+        office: 'สำนักงานอัยการจังหวัดนครราชสีมา',
         initial: 'สอจ.โคราช',
         phone: '0-4424-8158',
         fax: '0-4424-8160',
         email: 'korat@ago.go.th',
-        address: 'อาคารสำนักงานอัยการภาค 3 ชั้น 2 ถนนราชดำเนิน ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา',
+        addr: 'อาคารสำนักงานอัยการภาค 3 ชั้น 2 ถนนราชดำเนิน ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา',
         division: 'สำนักงานอัยการภาค 3',
         contact: {
             name: 'นายยุทธนา บุญตรง',
@@ -166,12 +169,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 10,
-        officeName: 'สำนักเทคโนโลยีสารสนเทศและการสื่อสาร (อาคารรัชดาภิเษก)',
+        office: 'สำนักเทคโนโลยีสารสนเทศและการสื่อสาร (อาคารรัชดาภิเษก)',
         initial: 'สอจ.นนทบุรี',
         phone: '0-2515-4182',
         fax: '0-2515-4189',
         email: 'ictc@ago.go.th',
-        address: '51 สำนักงานอัยการสูงสุด อาคารถนนรัชดาภิเษก ถนนรัชดาภิเษก แขวงจอมพล เขตจตุจักร กรุงเทพมหานคร',
+        addr: '51 สำนักงานอัยการสูงสุด อาคารถนนรัชดาภิเษก ถนนรัชดาภิเษก แขวงจอมพล เขตจตุจักร กรุงเทพมหานคร',
         division: 'สำนักงานเลขาธิการ สำนักงานอัยการสูงสุด',
         contact: {
             name: 'นางอรทัย มุสิกะ',
@@ -181,12 +184,12 @@ const officeData: OfficeDetail[] = [
     },
     {
         id: 11,
-        officeName: 'สำนักงานอัยการจังหวัดนนทบุรี',
+        office: 'สำนักงานอัยการจังหวัดนนทบุรี',
         initial: 'สอจ.นนทบุรี',
         phone: '0-2968-3000',
         fax: '0-2968-3001',
         email: 'nontburi@ago.go.th',
-        address: 'ศาลากลางจังหวัดนนทบุรี',
+        addr: 'ศาลากลางจังหวัดนนทบุรี',
         division: 'สำนักงานอัยการภาค 1',
         contact: {
             name: 'นายปรีชา สุขสันต์',
@@ -218,7 +221,7 @@ const OfficeProfileCard = ({ office, onClose }: { office: OfficeDetail, onClose:
                     
                     {/* Office Header */}
                     <div className="border-b pb-4">
-                        <p className="text-xl font-extrabold text-gray-900">{office.officeName}</p>
+                        <p className="text-xl font-extrabold text-gray-900">{office.office}</p>
                         <p className="text-sm text-blue-600 font-medium mt-1">
                             <span className="font-bold">({office.initial})</span> - สังกัด: {office.division}
                         </p>
@@ -259,7 +262,7 @@ const OfficeProfileCard = ({ office, onClose }: { office: OfficeDetail, onClose:
                     {/* Location Details */}
                     <div className="pt-4 border-t space-y-2">
                         <h4 className="font-bold text-gray-700 flex items-center"><MapPin size={18} className="mr-2"/>ที่อยู่สำนักงาน</h4>
-                        <p className="text-sm text-gray-600">{office.address}</p>
+                        <p className="text-sm text-gray-600">{office.addr}</p>
                     </div>
 
                 </div>
@@ -286,14 +289,15 @@ const OfficeSearchPage = () => {
     const [isSearchAlertOpen, setIsSearchAlertOpen] = useState(false);
     const [isSearchSuccessOpen, setIsSearchSuccessOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState({
-        name: '',       // ชื่อ
+        office: '',       // ชื่อ
         division: '',     // สำนักงาน
     });
     const [selectedOffice, setSelectedOffice] = useState<OfficeDetail | null>(null);
     const [isProfileCardOpen, setIsProfileCardOpen] = useState(false);
     const [searchResults, setSearchResults] = useState<OfficeDetail[]>([]); // สำหรับเก็บผลลัพธ์ที่ค้นหาได้จริง
+    const [searchResultsCount, setSearchResultsCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
-    
+    const [pagination, setPagination] = useState({ total: 0, totalPages: 0, currentPage: 1 });
 
     // Filter Logic: กรองจาก ชื่อสำนักงาน, ชื่อย่อ, เบอร์โทรศัพท์, หรืออีเมล
     const filteredResults = useMemo(() => {
@@ -304,7 +308,7 @@ const OfficeSearchPage = () => {
         const lowerSearchTerm = searchTerm.toLowerCase();
 
         return officeData.filter(office => {
-            const matchesTerm = office.officeName.toLowerCase().includes(lowerSearchTerm) ||
+            const matchesTerm = office.office.toLowerCase().includes(lowerSearchTerm) ||
                                 office.initial.toLowerCase().includes(lowerSearchTerm.replace('.', '')) || // ค้นหาชื่อย่อ
                                 office.phone.includes(lowerSearchTerm) ||
                                 office.email.toLowerCase().includes(lowerSearchTerm);
@@ -313,73 +317,57 @@ const OfficeSearchPage = () => {
         });
     }, [searchTerm]);
 
-    const handleSearch = (e?: React.FormEvent) => {
-    e?.preventDefault();
-
-    // 1. เช็คค่าว่างจาก searchTerm ตัวเดียว
-    if (!searchTerm.trim()) {
+const handleSearch = async (e?: React.FormEvent, page = 1, isPagination = false) => {
+    if (e) e.preventDefault();
+    const isSearchEmpty = !searchQuery.office.trim();
+    
+    if (isSearchEmpty) {
         Swal.fire({
             icon: 'warning',
-            title: 'แจ้งเตือน',
-            text: 'กรุณากรอกชื่อหน่วยงานหรือสังกัดที่ต้องการค้นหา',
-            confirmButtonText: 'ตกลง',
-            confirmButtonColor: '#2563EB',
-            customClass: { container: 'z-[9999]' }
+            title: 'กรุณากรอกข้อมูล',
+            text: 'กรุณาพิมพ์ชื่อสำนักงานที่ต้องการค้นหา',
+            confirmButtonColor: '#ea580c', // สีส้มตามธีม
         });
-        return;
+        return; // หยุดการทำงาน ไม่ส่งไป Backend
     }
-
     setIsLoading(true);
-    setShowResults(false);
+    // if (page === 1) setShowResults(false);
 
-    setTimeout(() => {
-        const keyword = searchTerm.toLowerCase();
-
-        // 2. กรองข้อมูลโดยเช็คว่า Keyword ตรงกับ Name OR Initial OR Division
-        const results = officeData.filter(office => {
-            return (
-                office.officeName.toLowerCase().includes(keyword) || 
-                office.initial.toLowerCase().includes(keyword) || 
-                office.division.toLowerCase().includes(keyword)
-            );
+    try {
+        const params = new URLSearchParams({
+            office: searchQuery.office.trim(),
+            page: page.toString()
         });
 
-        setSearchResults(results);
-        setIsLoading(false);
+        const response = await fetch(`/api/admin/department?${params.toString()}`);
+        const result = await response.json();
 
-        // ... (ส่วนการแสดง Swal success/error เหมือนเดิม) ...
-        if (results.length > 0) {
-            Swal.fire({
-                icon: 'success',
-                title: 'ค้นหาสำเร็จ',
-                html: `พบข้อมูลหน่วยงานจำนวน <span class="font-bold text-blue-600 text-xl">${results.length}</span> รายการ`,
-                confirmButtonText: 'ตกลง',
-                confirmButtonColor: '#2563EB',
-                customClass: { container: 'z-[9999]' }
-            }).then((result) => {
-                if (result.isConfirmed || result.isDismissed) {
-                    setShowResults(true);
-                }
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'ไม่พบข้อมูล',
-                text: 'ไม่พบข้อมูลหน่วยงานที่ตรงกับคำค้นหาของคุณ',
-                confirmButtonText: 'ตกลง',
-                confirmButtonColor: '#EF4444',
-                customClass: { container: 'z-[9999]' }
-            });
+        if (result.success) {
+            setSearchResults(result.data);
+            setPagination(result.pagination); // เก็บข้อมูลแบ่งหน้า
+            setShowResults(true);
+            
+            if (page === 1 && !isPagination && result.data.length > 0) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ค้นหาสำเร็จ',
+                    text: `พบข้อมูลสำนักงาน ${result.pagination.total} รายการ`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
         }
-    }, 3000);
+    } catch (error) {
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+    } finally {
+        setIsLoading(false);
+    }
 };
 
     const handleViewProfile = (office: OfficeDetail) => {
         setSelectedOffice(office);
         setIsProfileCardOpen(true);
     };
-
-    const searchResultsCount = filteredResults.length;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -405,15 +393,10 @@ const OfficeSearchPage = () => {
                             <Search className="absolute left-3 top-[48px] transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="สามารถค้นหาชื่อย่อของสำนักงานได้"
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mt-1"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => { // เพิ่มการค้นหาเมื่อกด Enter
-                                    if (e.key === 'Enter') {
-                                        handleSearch();
-                                    }
-                                }}
+                                placeholder="ระบุชื่อสำนักงานที่ต้องการค้นหา..."
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                value={searchQuery.office} // <--- ต้องเป็นตัวนี้
+                                onChange={(e) => setSearchQuery({ ...searchQuery, office: e.target.value })} // <--- ต้องเป็นตัวนี้
                             />
                         </div>
 
@@ -432,71 +415,100 @@ const OfficeSearchPage = () => {
                 </div>
 
                 {/* --- Search Results Table (คงรายละเอียดของสำนักงาน) --- */}
-<div className="mt-8">
-    {isLoading ? (
-        // --- ส่วนที่ 1: Skeleton ขณะโหลด ---
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex flex-col items-center justify-center space-y-4">
-                <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                <div className="space-y-2 w-full">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-12 bg-gray-50 rounded-xl w-full animate-pulse"></div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    ) : showResults && (
-        // --- ส่วนที่ 2: ตารางผลลัพธ์ ---
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate__animated animate__fadeIn">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <Building2 size={20} className="text-blue-600" />
-                    ผลการค้นหาหน่วยงาน
-                </h2>
-            </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50/80 text-gray-600">
-                        <tr>
-                            <th className="px-6 py-4 font-bold text-sm">ชื่อหน่วยงาน</th>
-                            <th className="px-6 py-4 font-bold text-sm">สังกัด</th>
-                            <th className="px-6 py-4 font-bold text-sm">เบอร์โทรศัพท์/E-mail</th>
-                            <th className="px-6 py-4 font-bold text-sm text-center">รายละเอียด</th>
+{/* ส่วนแสดงผลลัพธ์ (Table) */}
+{showResults && !isLoading && (
+    <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden animate__animated animate__fadeIn">
+        <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+                <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">หน่วยงาน/สำนักงาน</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">ข้อมูลติดต่อ</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">ที่อยู่</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                    {searchResults.map((item, index) => (
+                        <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
+                            {/* <td className="px-6 py-4 text-sm text-gray-500">
+                                {/* คำนวณลำดับตามหน้าปัจจุบัน */}
+                                {/* {(pagination.currentPage - 1) * 10 + (index + 1)}
+                            </td> */}
+                            <td className="px-6 py-4">
+                                <div className="font-semibold text-gray-900">{item.office}</div>
+                                <div className="text-xs text-orange-600 font-medium uppercase">{item.initial || '-'}</div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                                <div className="flex flex-col space-y-1">
+                                    <span className="flex items-center gap-2">
+                                        <Phone size={14} className="text-blue-500" /> {item.phone || '-'}
+                                    </span>
+                                    <span className="flex items-center gap-2 text-xs text-gray-400">
+                                        <Mail size={12} /> {item.email || '-'}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                                <p className="truncate" title={item.addr}>{item.addr || '-'}</p>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                                <button 
+                                    onClick={() => handleViewProfile(item)}
+                                    className="p-2 text-orange-600 hover:bg-orange-100 rounded-full transition-all group"
+                                    title="ดูรายละเอียด"
+                                >
+                                    <FileSearchCorner size={20} className="group-hover:scale-110 transition-transform" />
+                                </button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {searchResults.map((office) => (
-                            <tr key={office.id} className="hover:bg-blue-50/30 transition-colors group">
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                    {office.officeName} ({office.initial})
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    {office.division}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    <p className="flex items-center"><Phone size={14} className="mr-1 text-green-600"/> {office.phone}</p>
-                                    <p className="text-sm text-gray-500 truncate flex items-center"><Mail size={12} className="mr-1"/> {office.email}</p>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedOffice(office);
-                                            setIsProfileCardOpen(true);
-                                        }}
-                                        className="p-2 text-blue-600 hover:bg-blue-600 hover:text-white rounded-full transition-all"
-                                    >
-                                        <Search size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+
+        {/* --- ส่วนควบคุมการแบ่งหน้า (Pagination Controls) --- */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-600">
+                แสดงผล <span className="font-medium">{(pagination.currentPage - 1) * 10 + 1}</span> ถึง <span className="font-medium">{Math.min(pagination.currentPage * 10, pagination.total)}</span> จากทั้งหมด <span className="font-bold text-orange-600">{pagination.total}</span> รายการ
+            </div>
+            
+            <div className="flex items-center space-x-2">
+                <button 
+                    onClick={() => handleSearch(undefined, pagination.currentPage - 1)}
+                    disabled={pagination.currentPage === 1}
+                    className="p-2 border rounded bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronDown size={18} className="rotate-90" />
+                </button>
+                
+                <div className="flex space-x-1">
+                    {[...Array(pagination.totalPages)].map((_, i) => (
+                        <button
+                            key={i + 1}
+                            onClick={() => handleSearch(undefined, i + 1)}
+                            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                pagination.currentPage === i + 1 
+                                ? 'bg-orange-500 text-white shadow-md' 
+                                : 'bg-white border text-gray-600 hover:bg-orange-50'
+                            }`}
+                        >
+                            {i + 1}
+                        </button>
+                    )).slice(Math.max(0, pagination.currentPage - 3), Math.min(pagination.totalPages, pagination.currentPage + 2))}
+                </div>
+
+                <button 
+                    onClick={() => handleSearch(undefined, pagination.currentPage + 1)}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="p-2 border rounded bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronDown size={18} className="-rotate-90" />
+                </button>
             </div>
         </div>
-    )}
-</div>
+    </div>
+)}
                 
                 {/* --- Modals --- */}
                 

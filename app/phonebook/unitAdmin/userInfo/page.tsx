@@ -38,30 +38,50 @@ export default function UnitPersonnelManagement() {
 
 useEffect(() => {
     const fetchPersonnel = async () => {
+        setIsLoading(true);
         try {
             const storedUser = localStorage.getItem('user');
-            const userData = storedUser ? JSON.parse(storedUser) : null;
-            // 1. ตรวจสอบ Key ให้ตรงกับที่ Login เก็บไว้ (สมมติใช้ deptId)
-            const deptId = userData?.deptId; 
-
-        if (!deptId) {
-                console.error("ไม่พบข้อมูลบุคลากรในหน่วยงานของท่าน");
+            
+            // 1. เช็คว่ามีข้อมูลใน LocalStorage ไหม
+            if (!storedUser) {
+                console.error("❌ ไม่พบ key ชื่อ 'user' ใน LocalStorage");
+                setIsLoading(false);
                 return;
             }
 
-            // 2. ส่ง deptId ไปที่ API
-            const response = await fetch(`/api/unitAdmin/userInfo?deptId=${deptId}`);
+            const userData = JSON.parse(storedUser);
+            console.log("🔍 ข้อมูล User ที่ดึงมาได้:", userData);
+
+            // 2. ดึงค่า agoId (ลองเช็คทุกชื่อที่เป็นไปได้)
+            // ถ้าคุณใช้ username ล็อกอิน ค่ามักจะอยู่ที่ .agoId หรือ .username
+            const agoId = userData.agoId || userData.ago_id || userData.username;
+
+            if (!agoId || agoId === 'undefined') {
+                console.error("❌ หา agoId ไม่เจอใน userData! ลองตรวจสอบหน้า Login ว่าบันทึกค่ายังไง");
+                setIsLoading(false);
+                return;
+            }
+
+            console.log("✅ จะดึงข้อมูลบุคลากรของหน่วยงานรหัส:", agoId);
+
+            // 3. ส่ง Request ไปที่ API
+            const response = await fetch(`/api/unitAdmin/userInfo?agoId=${agoId}`);
             const result = await response.json();
 
             if (result.success) {
-                setPersonnelList(result.data); // เก็บข้อมูลจริงลง State
+                setPersonnelList(result.data);
+                console.log("📊 จำนวนข้อมูลที่ดึงมาได้:", result.data.length);
+            } else {
+                console.error("❌ API Error:", result.message);
+                // ถ้า API พังแต่ success: false จะมาตกที่นี่
             }
         } catch (error) {
-            console.error("Fetch error:", error);
+            console.error("❌ Fetch error:", error);
         } finally {
             setIsLoading(false);
         }
     };
+
     fetchPersonnel();
 }, []);
 

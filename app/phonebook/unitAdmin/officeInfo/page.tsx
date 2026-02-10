@@ -10,7 +10,7 @@ export default function OfficeSettingsPage() {
     // จำลองการดึงข้อมูลเฉพาะหน่วยงานที่ Admin คนนี้ดูแลอยู่
     // const [officeData, setOfficeData] = useState({
     //     office: 'สำนักเทคโนโลยีสารสนเทศและการสื่อสาร (อาคารถนนรัชดาภิเษก)',
-    //     initials: 'สทส.',
+    //     initial: 'สทส.',
     //     address: 'เลขที่ 51 สำนักงานอัยการสูงสุด อาคารถนนรัชดาภิเษก ชั้น 3 แขวงจอมพล เขตจตุจักร กรุงเทพมหานคร 10900',
     //     building: 'ถนนรัชดาภิเษก',
     //     floor: '3',
@@ -26,12 +26,82 @@ export default function OfficeSettingsPage() {
     //     email: 'ictc@ago.go.th',
     //     website: 'www3.ago.go.th/ictc',
     // });
-    const [officeData, setOfficeData] = useState<Office | null>(null);
-    const [editOfficeName, setEditOfficeName] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [officeData, setOfficeData] = useState<any>({}); // เปลี่ยนจาก null เป็น {}    const [editOfficeName, setEditOfficeName] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
     const [displayTitle, setDisplayTitle] = useState('');
     // --- เพิ่มตัวแปรนี้เพื่อล็อกชื่อหัวข้อให้นิ่ง ---
     const [displayName, setDisplayName] = useState('');
+
+    // เพิ่ม State สำหรับเก็บรายการที่จะแสดงใน Drop-down
+    const [provinces, setProvinces] = useState([]);
+    const [amphures, setAmphures] = useState([]);
+    const [tambons, setTambons] = useState([]);
+
+    // 1. ดึงจังหวัดมาตอนโหลดหน้าแรก
+useEffect(() => {
+    fetch('/api/unitAdmin/locations?type=provinces')
+        .then(res => res.json())
+        .then(data => setProvinces(data))
+        .catch(err => console.error("Load provinces error:", err));
+}, []);
+
+// 2. เฝ้าติดตาม officeData เพื่อโหลด อำเภอ/ตำบล มารองรับค่า ID ที่มีอยู่
+useEffect(() => {
+    const syncLocations = async () => {
+        // ถ้ามี id จังหวัดในข้อมูลหน่วยงาน ให้โหลดอำเภอของจังหวัดนั้น
+        if (officeData.gov_changwat_id) {
+            try {
+                const res = await fetch(`/api/unitAdmin/locations?type=amphures&parentId=${officeData.gov_changwat_id}`);
+                const data = await res.json();
+                setAmphures(data);
+            } catch (err) { console.error("Load amphures error:", err); }
+        }
+
+        // ถ้ามี id อำเภอในข้อมูลหน่วยงาน ให้โหลดตำบลของอำเภอนั้น
+        if (officeData.gov_ampur_id) {
+            try {
+                const res = await fetch(`/api/unitAdmin/locations?type=tambons&parentId=${officeData.gov_ampur_id}`);
+                const data = await res.json();
+                setTambons(data);
+            } catch (err) { console.error("Load tambons error:", err); }
+        }
+    };
+
+    syncLocations();
+}, [officeData.gov_changwat_id, officeData.gov_ampur_id]); 
+// ทำงานเมื่อข้อมูลหน่วยงานถูกโหลด (Initial) หรือเมื่อผู้ใช้เลือกเปลี่ยนค่าเอง
+    // ทำงานทุกครั้งที่ ID จังหวัดหรืออำเภอเปลี่ยน (รวมถึงตอน fetch ข้อมูลใหม่หลังบันทึกด้วย)
+
+    // 2. เมื่อจังหวัดเปลี่ยน ให้ดึงอำเภอ
+    const handleProvinceChange = async (provinceId: string) => {
+        setOfficeData({ ...officeData, gov_changwat_id: provinceId, gov_ampur_id: '', gov_tambon_id: '' });
+        const res = await fetch(`/api/unitAdmin/locations?type=amphures&parentId=${provinceId}`);
+        const data = await res.json();
+        setAmphures(data);
+        setTambons([]); // ล้างตำบลเก่า
+    };
+
+    // 3. เมื่ออำเภอเปลี่ยน ให้ดึงตำบล
+    const handleAmpurChange = async (amphurId: string) => {
+        setOfficeData({ ...officeData, gov_ampur_id: amphurId, gov_tambon_id: '' });
+        const res = await fetch(`/api/unitAdmin/locations?type=tambons&parentId=${amphurId}`);
+        const data = await res.json();
+        setTambons(data);
+    };
+
+    useEffect(() => {
+    if (officeData.gov_changwat_id) {
+        fetch(`/api/locations?type=amphures&parentId=${officeData.gov_changwat_id}`)
+            .then(res => res.json())
+            .then(data => setAmphures(data));
+    }
+    if (officeData.gov_ampur_id) {
+        fetch(`/api/locations?type=tambons&parentId=${officeData.gov_ampur_id}`)
+            .then(res => res.json())
+            .then(data => setTambons(data));
+    }
+    }, [officeData.gov_changwat_id, officeData.gov_ampur_id]);
 
     // useEffect(() => {
     //     if (officeData) {
@@ -63,67 +133,103 @@ export default function OfficeSettingsPage() {
     //     });
     // };
 
-useEffect(() => {
-    const fetchOfficeInfo = async () => {
-        try {
-            if (typeof window === 'undefined') return;
+   useEffect(() => {
+        fetchOfficeData();
+    }, []);
 
-            const storedUser = localStorage.getItem('user');
-            if (!storedUser) return;
-
-            const userData = JSON.parse(storedUser);
-            // ดึง officeInfo_id มาจาก localStorage ที่เราเก็บไว้ตอน handleLogin
-            const officeId = userData.officeInfo_id;
-
-            console.log("Current Office ID:", officeId); // <--- เช็คใน Console (F12) ว่าเลขขึ้นตรงไหม
-
-            if (!officeId) {
-                console.error('ID หน่วยงานไม่ถูกต้อง');
-                return;
-            }
-
-            // ส่ง ID ไปที่ API
-            const response = await fetch(`/api/unitAdmin/officeInfo?id=${officeId}`);
-            const result = await response.json();
-
-            if (result.success) {
-                setOfficeData(result.data);
-                setDisplayName(result.data.officeName);
-            }
-        } catch (error) {
-            console.error("Fetch error:", error);
-        } finally {
-            setIsLoading(false);
+    const fetchOfficeData = async () => {
+    try {
+        setIsLoading(true); // เริ่มการโหลด
+        const officeId = localStorage.getItem('officeInfo_id');
+        
+        if (!officeId || officeId === 'undefined') {
+            console.error("Missing officeId in localStorage");
+            setIsLoading(false); // ปิดการโหลดหากไม่มี ID
+            return;
         }
-    };
-    fetchOfficeInfo();
-}, []);
 
+        const res = await fetch(`/api/unitAdmin/officeInfo?id=${officeId}`);
+        const result = await res.json();
+
+        if (result.success) {
+            setOfficeData(result.data);
+            // ตั้งค่าชื่อที่จะแสดงบนหัวข้อให้นิ่ง (จากคอลัมน์ remark1 ในฐานข้อมูล)
+            setDisplayName(result.data.remark1); 
+        }
+    } catch (error) {
+        console.error("Fetch error:", error);
+    } finally {
+        // *** สำคัญมาก: ต้องปิดการโหลดตรงนี้เพื่อให้ UI แสดงผลเนื้อหา ***
+        setIsLoading(false); 
+    }
+};
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="animate-spin text-blue-500" size={48} />
+                <span className="ml-2 text-lg">กำลังโหลดข้อมูล...</span>
+            </div>
+        );
+    }
+
+    if (!officeData) return <div className="p-10 text-center">ไม่พบข้อมูลหน่วยงาน</div>;
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setOfficeData((prev: any) => ({
+            ...prev,
+            [name]: value
+        }));
+    };
 
 const handleSave = async () => {
-        try {
-            // อัปเดต displayName บนหัวข้อให้ตรงกับที่พิมพ์ใหม่หลังจากกดบันทึกสำเร็จ
-            setDisplayName(officeData.officeName);
-            
-            // TODO: fetch('/api/unitAdmin/officeInfo', { method: 'PUT', ... })
-            
-            Swal.fire({
-                title: 'สำเร็จ',
-                text: 'บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
+    if (!officeData?.id) {
+        Swal.fire('ผิดพลาด', 'ไม่พบรหัสหน่วยงาน', 'error');
+        return;
+    }
+
+    setIsSaving(true);
+    try {
+        const res = await fetch('/api/unitAdmin/officeInfo', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(officeData) // ตรวจสอบว่า officeData มีค่า id และค่าที่แก้ครบ
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            await Swal.fire({
+            icon: 'success',
+            title: 'Update ข้อมูลเรียบร้อยแล้ว',
+            showConfirmButton: false,
+            timer: 1500
             });
-        } catch (error) {
-            Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            // โหลดข้อมูลใหม่เพื่อให้หน้าจอแสดงค่าล่าสุดจาก DB
+            fetchOfficeData(); 
+
+        } else {
+            throw new Error(result.message);
         }
-    };
+    } catch (error: any) {
+        Swal.fire('เกิดข้อผิดพลาด', error.message, 'error');
+    } finally {
+        setIsSaving(false);
+    }
+};
 
     if (isLoading) return (
         <div className="flex items-center justify-center h-screen bg-gray-50">
             <Loader2 className="animate-spin text-blue-600" size={40} />
         </div>
     );
+
+    const formatValue = (value: any) => {
+    if (value === null || value === undefined || String(value).trim() === '' || value === 'null') {
+        return '-';
+    }
+    return value;
+};
 
 
 return (
@@ -156,8 +262,8 @@ return (
                                 </label>
                                 <input 
                                     type="text" 
-                                    value={officeData?.officeName}
-                                    onChange={(e) => setOfficeData({...officeData, officeName: e.target.value})}
+                                    value={officeData.remark1}
+                                    onChange={(e) => setOfficeData({...officeData, remark1: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 />
                             </div>
@@ -167,8 +273,8 @@ return (
                                 </label>
                                 <textarea 
                                     rows={3}
-                                    value={officeData?.address}
-                                    onChange={(e) => setOfficeData({...officeData, address: e.target.value})}
+                                    value={officeData.addr}
+                                    onChange={(e) => setOfficeData({...officeData, addr: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
@@ -176,75 +282,93 @@ return (
                             <div>
                            <label className="text-sm font-semibold text-gray-600 flex items-center gap-2">อาคาร</label>
                                  <input
-                                     value={officeData.building}
+                                     value={formatValue(officeData.building)}
                                      onChange={(e) => setOfficeData({ ...officeData, building: e.target.value })}
                                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
                          <div>
                              <label className="text-sm font-semibold text-gray-600 flex items-center gap-2">ชั้น</label>
                                  <input
-                                     value={officeData.floor}
+                                     value={formatValue(officeData.floor)}
                                      onChange={(e) => setOfficeData({ ...officeData, floor: e.target.value })}
                                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
                          <div>
                              <label className="text-sm font-medium text-gray-700">บ้านเลขที่</label>
                              <input
-                                    value={officeData.officeNo}
-                                    onChange={(e) => setOfficeData({ ...officeData, officeNo: e.target.value })}
+                                    value={formatValue(officeData.addr_no)}
+                                    onChange={(e) => setOfficeData({ ...officeData, addr_no: e.target.value })}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
 
                          <div>
                             <label className="text-sm font-medium text-gray-700">หมู่</label>
                             <input
-                                value={officeData.village}
-                                onChange={(e) => setOfficeData({ ...officeData, village: e.target.value })}
+                                value={formatValue(officeData.moo)}
+                                onChange={(e) => setOfficeData({ ...officeData, moo: e.target.value })}
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                         </div>
 
                          <div>
                          <label className="text-sm font-medium text-gray-700">ถนน</label>
                          <input
-                             value={officeData.road}
+                             value={formatValue(officeData.road)}
                              onChange={(e) => setOfficeData({ ...officeData, road: e.target.value })}
                              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
-                         <div>
-                             <label className="text-sm font-medium text-gray-700">จังหวัด</label>
-                         <input
-                             value={officeData.province}
-                             onChange={(e) => setOfficeData({ ...officeData, province: e.target.value })}
-                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
-                         </div>
-                         <div>
-                             <label className="text-sm font-medium text-gray-700">อำเภอ/เขต</label>
-                         <input
-                             value={officeData.district}
-                             onChange={(e) => setOfficeData({ ...officeData, district: e.target.value })}
-                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
-                         </div>
-
-                         <div>
-                             <label className="text-sm font-medium text-gray-700">ตำบล/แขวง</label>
-                         <input
-                             value={officeData.subDistrict}
-                             onChange={(e) => setOfficeData({ ...officeData, subDistrict: e.target.value })}
-                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">จังหวัด</label>
+                            <select 
+                                value={officeData.gov_changwat_id}
+                                onChange={(e) => handleProvinceChange(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- เลือกจังหวัด --</option>
+                                {provinces.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                         {/* อำเภอ (จะแสดงข้อมูลได้ต่อเมื่อเลือกจังหวัดแล้ว) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">อำเภอ</label>
+                            <select 
+                                value={officeData.gov_ampur_id}
+                                onChange={(e) => handleAmpurChange(e.target.value)}
+                                disabled={!officeData.gov_changwat_id}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- เลือกอำเภอ --</option>
+                                {amphures.map((a: any) => (
+                                    <option key={a.id} value={a.id}>{a.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                         {/* ตำบล (จะแสดงข้อมูลได้ต่อเมื่อเลือกอำเภอแล้ว) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">ตำบล</label>
+                            <select 
+                                value={officeData.gov_tambon_id || ''}
+                                onChange={(e) => setOfficeData({ ...officeData, gov_tambon_id: e.target.value })}
+                                disabled={!officeData.gov_ampur_id}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- เลือกตำบล --</option>
+                                {tambons.map((t: any) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
                         </div>
 
                          <div>
                              <label className="text-sm font-medium text-gray-700">รหัสไปรษณีย์</label>
                              <input
-                                 value={officeData.zipcode}
-                                 onChange={(e) => setOfficeData({ ...officeData, zipcode: e.target.value })}
+                                 value={officeData.gov_postcode}
+                                 onChange={(e) => setOfficeData({ ...officeData, gov_postcode: e.target.value })}
                                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
 
                          <div>
                              <label className="text-sm font-medium text-gray-700">เว็บไซต์หน่วยงาน</label>
                              <input
-                                 value={officeData.website}
+                                 value={formatValue(officeData.website)}
                                  onChange={(e) => setOfficeData({ ...officeData, website: e.target.value })}
                                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"/>
                          </div>
@@ -264,18 +388,18 @@ return (
                                 </label>
                                 <input 
                                     type="text" 
-                                    value={officeData?.phone}
-                                    onChange={(e) => setOfficeData({...officeData, phone: e.target.value})}
+                                    value={officeData.tel}
+                                    onChange={(e) => setOfficeData({...officeData, tel: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-gray-600 flex items-center gap-2">
-                                    <Printer size={14} /> เบอร์โทรสาร (Fax)
+                                    <Printer size={14} /> โทรสาร (Fax)
                                 </label>
                                 <input 
                                     type="text" 
-                                    value={officeData?.fax || ''}
+                                    value={formatValue(officeData.fax || '')}
                                     onChange={(e) => setOfficeData({...officeData, fax: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
@@ -286,7 +410,7 @@ return (
                                 </label>
                                 <input 
                                     type="email" 
-                                    value={officeData?.email}
+                                    value={formatValue(officeData.email)}
                                     onChange={(e) => setOfficeData({...officeData, email: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                                 />

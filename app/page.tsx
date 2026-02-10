@@ -29,6 +29,7 @@ export default function LoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     // --- 1. เพิ่มการตรวจสอบเงื่อนไขการกรอกข้อมูล (Validation) ---
     if (activeTab === 'USER') {
@@ -75,16 +76,15 @@ try {
         setTimeout(() => {
             if (data.success) {
                 // ✅ 1. เก็บ deptId แยกไว้เพื่อให้หน้า Table ดึงง่ายๆ
-                if (data.deptId) {
-                    localStorage.setItem('deptId', data.deptId.toString());
+                if (data.officeInfo_id) {
+                    localStorage.setItem('officeInfo_id', data.officeInfo_id);
                 }
 
                 // ✅ 2. เก็บข้อมูล User ทั้งหมด
                 localStorage.setItem('user', JSON.stringify({
                     fullname: data.name,
                     role: data.role,
-                    officeInfo_id: data.officeInfo_id,
-                    deptId: data.deptId
+                    officeInfo_id: data.officeInfo_id
                 }));
                 
                 Swal.fire({

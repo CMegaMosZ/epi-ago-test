@@ -11,14 +11,14 @@ import Swal from 'sweetalert2';
 interface SubDepartment {
     id: number;
     name: string;
-    initials: string;
+    initial: string;
     phone: string;
 }
 
 export default function ManageSubDepartments() {
     // 1. เริ่มต้นด้วย 1 กลุ่มงานเสมอ
     const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([
-        { id: Date.now(), name: '', initials: '', phone: '' }
+        { id: Date.now(), name: '', initial: '', phone: '' }
     ]);
 
     // ฟังก์ชันเพิ่มกลุ่มงานใหม่ (ปุ่มสีน้ำเงิน)

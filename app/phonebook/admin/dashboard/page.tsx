@@ -154,10 +154,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* ส่วนที่ 2: Content Grid (Charts & Activities) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> */}
                 
                 {/* ฝั่งซ้าย: กราฟหรือตารางย่อ (ใช้พื้นที่ 2 ส่วน) */}
-                <div className="lg:col-span-2 space-y-8">
+                {/* <div className="lg:col-span-2 space-y-8">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="font-bold text-gray-800 flex items-center">
@@ -168,13 +168,13 @@ const AdminDashboard = () => {
                                 <option>ปี 2569</option>
                                 <option>ปี 2568</option>
                             </select>
-                        </div>
+                        </div> */}
                         {/* Placeholder สำหรับ Chart (แนะนำใช้ Recharts หรือ Chart.js) */}
-                        <div className="h-[300px] w-full bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed">
+                        {/* <div className="h-[300px] w-full bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed">
                             [ พื้นที่แสดงภาพรวมการใช้งาน ]
                         </div>
                     </div>
-                </div>
+                </div> */}
 
         
                 {/* ฝั่งขวา: รายการกิจกรรมล่าสุด (Recent Activities) */}
@@ -219,7 +219,7 @@ const AdminDashboard = () => {
     </Link>
                 </div>
             </div>
-        </div>
+        // </div>
     );
 };
 

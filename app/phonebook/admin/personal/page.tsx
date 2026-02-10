@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import 'animate.css';
 import { useRouter } from 'next/navigation'
 import { 
     // ลบ icon ที่ไม่ใช้แล้วออก (Building, ChevronDown, IdCard, Lock, ShieldCheck, LogOut, ChevronLeft, ChevronRight)
-    User, Search, CheckCircle, Building,
+    User, Search, CheckCircle, Building, Hash,
     Phone, Mail, MapPin, Briefcase, X, UserSearch
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
@@ -246,8 +246,11 @@ const PersonnelSearchPage = () => {
     setIsProfileCardOpen(true);  // เปิด Modal
     };
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-    const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
 
     const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'name' | 'position' | 'office') => {
     setSearchQuery(prev => ({
@@ -284,10 +287,10 @@ const PersonnelSearchPage = () => {
     // ----------------------------------------------------
     // ✅ 4. Handler สำหรับการค้นหา (ใช้ Swal แทน Modal เก่า)
     // ----------------------------------------------------
-    const handleSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+const handleSearch = async (e?: React.FormEvent, pageNumber = 1, isPagination = false) => {
+    if (e) e.preventDefault();
 
-    // 1. Validation ข้อมูลว่าง
+    // 1. Validation ข้อมูลว่าง (เช็คเฉพาะตอนกดปุ่มค้นหาครั้งแรก)
     const isAllFieldsEmpty = 
         !searchQuery.name.trim() && 
         !searchQuery.position.trim() && 
@@ -297,24 +300,26 @@ const PersonnelSearchPage = () => {
         Swal.fire({
             icon: 'warning',
             title: 'แจ้งเตือน',
-            text: 'กรุณากรอกข้อมูลในช่องค้นหา',
+            text: 'กรุณากรอกข้อมูลอย่างน้อย 1 ช่องเพื่อค้นหา',
             confirmButtonColor: '#ea580c',
         });
         return;
     }
 
-    // 2. เริ่มกระบวนการ Loading
+    // 2. เริ่มกระบวนการ Loading และ Reset หน้าปัจจุบัน
     setIsLoading(true);
-    setShowResults(false);
+    // if (pageNumber === 1) setShowResults(false); 
 
     try {
         const params = new URLSearchParams({
             name: searchQuery.name.trim(),
             position: searchQuery.position.trim(),
             office: searchQuery.office.trim(),
+            page: pageNumber.toString(), // ส่งเลขหน้าไปให้ Backend
+            limit: '10' // กำหนดจำนวนต่อหน้าตรงนี้ได้เลย
         });
 
-        // เรียก API ไปยัง Path ที่คุณสร้างไว้
+        // เรียก API (เช็ค Path ให้ตรงกับที่คุณตั้งไว้ในไฟล์ route.ts)
         const response = await fetch(`/api/admin/personal?${params.toString()}`);
         
         if (!response.ok) throw new Error('Network response was not ok');
@@ -322,63 +327,65 @@ const PersonnelSearchPage = () => {
         const result = await response.json();
 
         if (result.success) {
-            // สำคัญ: Map ข้อมูลจาก DB (fullname) ให้ตรงกับ Interface (name)
+            // 3. Map ข้อมูลให้ตรงกับโครงสร้างตารางใหม่ (personal table)
             const mappedData = result.data.map((item: any) => ({
-                ...item,
                 id: item.id,
-                name: item.fullname || item.name, // ดักไว้ทั้งสองชื่อ
+                name: item.fullname, // จาก CONCAT(name, ' ', surname) ใน SQL
                 position: item.position,
-                office: item.office,
-                division: item.division,
-                mobilePhone: item.mobilePhone,
-                email: item.email,
-                imageUrl: item.imageUrl
+                office: item.office,   // จาก office_name
+                division: item.division, // จาก sec_name
+                officePhone: item.officePhone, // จาก ptel
+                internalPhone: item.internalPhone, // จาก pext
+                mobilePhone: item.mobilePhone, // จาก mobile
+                email: item.email || '-'
             }));
 
-            // หน่วงเวลาเล็กน้อยเพื่อให้ Skeleton แสดงผลสักพัก (UX)
-            setTimeout(() => {
-                setSearchResults(mappedData);
-                setSearchResultsCount(mappedData.length);
-                setIsLoading(false); // ปิด Loading ตรงนี้
+            // 4. อัปเดต State สำคัญสำหรับ Pagination
+            setSearchResults(mappedData);
+            setTotalRecords(result.total); // จำนวนรวมทั้งหมดใน DB
+            setTotalPages(result.totalPages); // จำนวนหน้าทั้งหมด
+            setCurrentPage(result.currentPage);
 
+            // หน่วงเวลา UX (Skeleton)
+            setTimeout(() => {
+                setIsLoading(false);
                 if (mappedData.length > 0) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'ค้นหาสำเร็จ',
-                        html: `พบข้อมูลบุคลากรจำนวน <span class="font-bold text-orange-600 text-xl">${mappedData.length}</span> รายการ`,
-                        confirmButtonColor: '#ea580c',
-                        customClass: { container: 'z-[9999]' },
-                        showClass: { popup: 'animate__animated animate__bounceIn animate__faster' },
-                        hideClass: { popup: 'animate__animated animate__fadeOut animate__faster' }
-                    }).then(() => {
-                        setShowResults(true); // แสดงตารางผลลัพธ์
-                    });
+                    if (pageNumber === 1 && !isPagination && result.data.length > 0) { // แจ้งเตือนเฉพาะการค้นหาครั้งแรก ไม่แจ้งตอนเปลี่ยนหน้า
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ค้นหาสำเร็จ',
+                            html: `พบข้อมูลบุคลากรทั้งหมด <span class="font-bold text-orange-600 text-xl">${result.total}</span> รายการ`,
+                            confirmButtonColor: '#ea580c',
+                            timer: 1500, // ปิดเองได้เพื่อความรวดเร็ว
+                        }).then(() => {
+                            setShowResults(true);
+                        });
+                    } else {
+                        setShowResults(true);
+                        // สั่งให้ Scroll กลับไปด้านบนของตารางเมื่อเปลี่ยนหน้า
+                        window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }
                 } else {
                     Swal.fire({
-                        icon: 'error',
+                        icon: 'info',
                         title: 'ไม่พบข้อมูล',
-                        text: 'ไม่พบข้อมูลบุคลากรที่ตรงตามเงื่อนไขที่คุณระบุ',
-                        confirmButtonColor: '#EF4444',
-                        customClass: { container: 'z-[9999]' },
-                        showClass: { popup: 'animate__animated animate__bounceIn animate__faster' },
-                        hideClass: { popup: 'animate__animated animate__fadeOut animate__faster' }
+                        text: 'ไม่พบข้อมูลที่ตรงกับเงื่อนไขที่ระบุ',
+                        confirmButtonColor: '#3B82F6',
                     });
                 }
-            }, 1000);
-        } else {
-            throw new Error(result.message);
+            }, 500);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Search Error:", error);
-        setIsLoading(false); // ต้องปิด Loading เสมอแม้จะ Error
+        setIsLoading(false);
         Swal.fire({
             icon: 'error',
             title: 'เกิดข้อผิดพลาด',
-            text: 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่ภายหลัง',
+            text: 'ไม่สามารถดึงข้อมูลได้: ' + error.message,
             confirmButtonColor: '#EF4444',
-            });
-        }
-    };
+        });
+    }
+};
 
     // ----------------------------------------------------
     // 5. Handler สำหรับการล้างข้อมูล
@@ -494,77 +501,87 @@ const PersonnelSearchPage = () => {
             {/* ❌ Modal แจ้งเตือนการค้นหา (ถูกลบออกไปแล้ว เพราะเปลี่ยนไปใช้ Swal) */}
             
             {/* Search Results Table */}
-{isLoading ? (
-    // --- 1. ส่วนแสดงผลขณะกำลังโหลด (Skeleton Loading) ---
-    <div className="bg-white p-6 rounded-xl shadow-lg">
-        <div className="h-7 bg-gray-200 rounded w-1/4 mb-6 animate-pulse"></div>
-        <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex gap-4 animate-pulse border-b border-gray-50 pb-4">
-                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                    <div className="h-4 bg-gray-100 rounded w-1/4"></div>
-                    <div className="h-4 bg-gray-100 rounded w-1/3"></div>
-                    <div className="h-8 bg-gray-200 rounded w-10 ml-auto"></div>
-                </div>
-            ))}
-        </div>
-    </div>
-) : showResults && (
-    // --- 2. ส่วนแสดงผลตารางเมื่อโหลดเสร็จ (showResults) ---
-    <div className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto animate__animated animate__fadeIn">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-                ผลการค้นหา 
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                    (พบ {searchResultsCount} รายการ)
-                </span>
-            </h2>
-        </div>
-        
-        {searchResultsCount === 0 ? (
-            <div className="text-center py-12 text-gray-500 flex flex-col items-center">
-                <UserSearch size={48} className="mb-2 opacity-20" />
-                <p>ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไขการค้นหา</p>
-            </div>
-        ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                    <tr>
-                        {/* <th className="px-6 py-3 text-left text-sm font-bold text-gray-500 uppercase tracking-wider">#</th> */}
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-500 uppercase tracking-wider">ชื่อ-นามสกุล</th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-500 uppercase tracking-wider">ตำแหน่ง</th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-500 uppercase tracking-wider">สำนักงาน</th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-500 uppercase tracking-wider">กลุ่ม/ฝ่าย</th>
-                        <th className="px-6 py-3 text-center text-sm font-bold text-gray-500 uppercase tracking-wider">รายละเอียด</th>
+    {/* // --- 1. ส่วนแสดงผลขณะกำลังโหลด (Skeleton Loading) --- */}
+{showResults && !isLoading && (
+    <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden animate__animated animate__fadeIn">
+        <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+                <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">ลำดับ</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">ชื่อ-นามสกุล</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">ตำแหน่ง</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">สังกัด (กอง/ส่วน)</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600">เบอร์โทรศัพท์</th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {searchResults.map((user, index) => (
-                        <tr key={user.id} className="hover:bg-gray-50 transition-colors border-b">
-                            {/* <td className="px-4 py-3 text-center text-sm text-gray-600">{index + 1}</td> */}
-                        <td className="px-4 py-3">
-                            <span className="text-sm font-medium text-gray-900">
-                                {user.name} {/* ต้องตรงกับที่ Map ไว้ด้านบน */}
-                            </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                            {user.position}
-                        </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{user.position}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{user.office}</td>
-                            <td className="px-4 py-3 text-center">
+                <tbody className="divide-y divide-gray-100">
+                    {searchResults.map((item, index) => (
+                        <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                            <td className="px-6 py-4 text-sm text-gray-500">
+                                {(currentPage - 1) * 10 + (index + 1)}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.name}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{item.position}</td>
+                            <td className="px-6 py-4">
+                                <div className="text-sm text-gray-900 font-medium">{item.office}</div>
+                                <div className="text-xs text-gray-500">{item.division}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-col space-y-1">
+                                    <span className="text-xs flex items-center gap-1">
+                                        <Phone size={12} className="text-blue-500"/> {item.officePhone || '-'}
+                                    </span>
+                                    <span className="text-xs flex items-center gap-1">
+                                        <Hash size={12} className="text-green-500"/> เบอร์ภายใน: {item.internalPhone || '-'}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
                                 <button 
-                                    onClick={() => handleViewProfile(user)}
-                                    className="text-orange-600 hover:text-orange-800 text-sm font-semibold"
+                                    onClick={() => handleViewProfile(item)}
+                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-all"
+                                    title="ดูรายละเอียด"
                                 >
-                                    ดูข้อมูล
+                                    <UserSearch size={20} />
                                 </button>
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
-        )}
+        </div>
+
+        {/* --- ส่วน Pagination (ปุ่มเปลี่ยนหน้า) --- */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-600">
+                แสดงผล {(currentPage - 1) * 10 + 1} ถึง {Math.min(currentPage * 10, totalRecords)} จากทั้งหมด <span className="font-bold text-blue-600">{totalRecords}</span> รายการ
+            </div>
+            
+            <div className="flex items-center space-x-2">
+                <button 
+                    onClick={() => handleSearch(undefined, currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border rounded bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                    ก่อนหน้า
+                </button>
+                
+                {/* แสดงเลขหน้าแบบย่อ (เช่น หน้า 1 จาก 5) */}
+                <span className="px-4 py-1 text-sm font-medium">
+                    หน้า {currentPage} / {totalPages}
+                </span>
+
+                <button 
+                    onClick={() => handleSearch(undefined, currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border rounded bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                    ถัดไป
+                </button>
+            </div>
+        </div>
     </div>
 )}
 
