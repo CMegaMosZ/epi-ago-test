@@ -49,3 +49,13 @@ export async function POST(req: Request) {
         );
     }
 }
+
+export async function GET() {
+    try {
+        // ดึง remark1 มาเป็นชื่อสำนักงาน
+        const [rows]: any = await db.execute('SELECT id, remark1 as name FROM dept_dtl WHERE status = 1 ORDER BY sort_id ASC');
+        return NextResponse.json({ success: true, data: rows });
+    } catch (error: any) {
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+}

@@ -27,6 +27,16 @@ export default function LoginPage() {
     const isIdActive = isIdFocused || idCard.length > 0
     const isIdError = idError.length > 0; 
 
+    const [offices, setOffices] = useState<{id: number, name: string}[]>([]);
+
+    useEffect(() => {
+    fetch('/api/auth/forgetPassword')
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) setOffices(result.data);
+        });
+}, []);
+
     const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -217,6 +227,42 @@ const handleForgetPassword = async () => {
     }
 };
 
+const handleAdminForgot = () => {
+    // แปลงข้อมูลสำนักงานเป็น Format ที่ Swal ต้องการ { value: text }
+    const officeOptions: { [key: string]: string } = {};
+    offices.forEach(office => {
+        officeOptions[office.name] = office.name;
+    });
+
+    Swal.fire({
+        title: '<span class="text-2xl font-bold text-gray-800">แจ้งลืมรหัสผ่าน (Admin)</span>',
+        html: `
+            <div class="text-left mt-4">
+                <p class="text-sm text-gray-600 mb-2 font-semibold">เลือกสำนักงาน/สังกัดของคุณ</p>
+            </div>
+        `,
+        input: 'select',
+        inputOptions: officeOptions,
+        inputPlaceholder: 'ค้นหาหรือเลือกสำนักงาน...',
+        showCancelButton: true,
+        confirmButtonText: 'ส่งคำขอตรวจสอบ',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#10b981', // สีเขียวแบบรูปที่ 2
+        inputValidator: (value) => {
+            if (!value) return 'กรุณาเลือกสำนักงานของคุณ';
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                icon: 'success',
+                title: 'ส่งคำขอสำเร็จ',
+                text: 'กรุณารอเจ้าหน้าที่ตรวจสอบข้อมูลและติดต่อกลับ',
+                confirmButtonColor: '#10b981'
+            });
+        }
+    });
+};
+
     return (
         <div className="flex items-center justify-center min-h-screen p-4 sm:p-6 bg-[url('/login_background.jpg')] bg-cover bg-center bg-fixed">
             <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate__animated animate__fadeIn">
@@ -363,16 +409,27 @@ const handleForgetPassword = async () => {
         </div>
 
         {/* ฝั่งขวา: ลืมรหัสผ่าน (แสดงทั้งคู่) */}
-        <div className="flex-1 text-right">
-            {/* สำหรับหน้าจอปกติ */}
-            <button
-                type="button"
-                onClick={handleForgetPassword} // เรียกใช้งาน SweetAlert ทันที
-                className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
-            >
-                ลืมรหัสผ่าน
-            </button>
-        </div>
+<div className="flex-1 text-right">
+    {activeTab === 'USER' ? (
+        /* ปุ่มสำหรับ USER */
+        <button
+            type="button"
+            onClick={handleForgetPassword}
+            className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+        >
+            ลืมรหัสผ่าน
+        </button>
+    ) : (
+        /* ปุ่มสำหรับ ADMIN */
+        <button 
+            type="button"
+            onClick={handleAdminForgot}
+            className="text-sm text-gray-500 hover:text-green-600 transition-colors font-medium"
+        >
+            ลืมรหัสผ่าน? (Admin)
+        </button>
+    )}
+</div>
     </div>
 
     {/* Privacy Notice: อยู่กึ่งกลางด้านล่างสุดเสมอ */}

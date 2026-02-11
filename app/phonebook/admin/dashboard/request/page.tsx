@@ -1,6 +1,6 @@
     'use client'
 
-    import { useState } from 'react'
+    import { useState, useEffect} from 'react'
     import { 
     CheckCircle, XCircle, Search, Filter, Clock, 
     UserCheck, ShieldCheck, Phone, Building2, 
@@ -22,25 +22,63 @@
 
     export default function UserApprovalPage() {
     const [requests, setRequests] = useState(initialRequests)
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('')
     const [activeFilter, setActiveFilter] = useState('PENDING')
 
-    const handleAction = (id: number, type: 'APPROVE' | 'REJECT', name: string) => {
-        Swal.fire({
-        title: type === 'APPROVE' ? 'อนุมัติการใช้งาน?' : 'ปฏิเสธการใช้งาน?',
-        text: `คุณต้องการดำเนินการกับคุณ ${name} หรือไม่?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: type === 'APPROVE' ? '#10b981' : '#ef4444',
-        confirmButtonText: 'ยืนยัน',
-        cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-        if (result.isConfirmed) {
-            setRequests(requests.filter(req => req.id !== id))
-            Swal.fire('สำเร็จ', `ดำเนินการเรียบร้อยแล้ว`, 'success')
+    const fetchRequests = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/admin/dashboard/request');
+            const result = await res.json();
+            if (result.success) {
+                setRequests(result.data);
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
+        } finally {
+            setLoading(false);
         }
-        })
-    }
+    };
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    // --- 2. ฟังก์ชัน อนุมัติ/ปฏิเสธ ---
+    const handleAction = async (id: number, status: 'APPROVE' | 'REJECT', name: string) => {
+        const actionText = status === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ';
+        const confirmResult = await Swal.fire({
+            title: `ยืนยัน${actionText}?`,
+            text: `คุณต้องการ${actionText}การลงทะเบียนของ ${name}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: status === 'APPROVE' ? '#10b981' : '#ef4444',
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (confirmResult.isConfirmed) {
+            try {
+                const res = await fetch(`/api/admin/dashboard/request/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: status === 'APPROVE' ? 1 : 2 })
+                });
+                if (res.ok) {
+                    Swal.fire('สำเร็จ', `ดำเนินการ${actionText}เรียบร้อยแล้ว`, 'success');
+                    fetchRequests(); // โหลดข้อมูลใหม่
+                }
+            } catch (error) {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
+    };
+
+        const filteredRequests = requests.filter(req => 
+            req.fname?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            req.lname?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            req.cid?.includes(searchTerm)
+        );
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">

@@ -105,18 +105,24 @@ export default function RegisterPage() {
     const router = useRouter();
 
     const [formData, setFormData] = useState({
-            title: '',      // l_prename
-            fname: '',
-            lname: '',
-            idCard: '',
-            memberType: '', // position_type
-            position: '',   // ago_position
-            office: '',     // dept_dtl (remark1)
-            division: '',   // กลุ่มงาน (พิมพ์เอง)
-            officePhone: '',
-            internalPhone: '',
-            email: '',
-        });
+        title: '', title_id: '',
+        fname: '', lname: '',
+        cid: '', bdate: '',
+        memberType: '', memberType_id: '',
+        position: '', // พิมพ์เองได้ตามโครงสร้าง table
+        office: '', office_id: '',
+        sec_name: '', // กลุ่มงาน
+        ptel: '',
+        mobile: ''
+    });
+
+    const handleCustomChange = (name: string, value: string, id?: any) => {
+    setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        [`${name}_id`]: id || prev[`${name}_id` as keyof typeof prev]
+    }));
+};
     // --- Register States ---
     const [idCard, setIdCard] = useState('');
     const [birthDate, setBirthDate] = useState('');
@@ -145,7 +151,7 @@ export default function RegisterPage() {
     useEffect(() => {
     const fetchOptions = async () => {
         try {
-            const res = await fetch('/api/register'); // สันนิษฐานว่าเป็น path นี้ตามไฟล์ route.ts ที่ส่งมา
+            const res = await fetch('/api/register/options'); // สันนิษฐานว่าเป็น path นี้ตามไฟล์ route.ts ที่ส่งมา
             const result = await res.json();
             if (result.success) {
                 setOptions(result.data);
@@ -206,7 +212,7 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.idCard || formData.idCard.length !== 13 || !uploadedFile) {
+        if (!formData.cid || formData.cid.length !== 13 || !uploadedFile) {
             Swal.fire('คำเตือน', 'กรุณากรอกเลขบัตรประชาชนให้ครบ 13 หลัก และแนบรูปหลักฐาน', 'warning');
             return;
         }
@@ -218,12 +224,12 @@ export default function RegisterPage() {
         data.append('title', formData.title);
         data.append('fname', formData.fname);
         data.append('lname', formData.lname);
-        data.append('idCard', formData.idCard); // 👈 สำคัญ: Backend ใช้ idCard
+        data.append('cid', formData.cid); // 👈 สำคัญ: Backend ใช้ cid
         data.append('file', uploadedFile);   // 👈 สำคัญ: Backend ใช้ file
 
         // แถม: ส่งค่าอื่นๆ ไปด้วยถ้า Database รองรับ
         data.append('position', formData.position);
-        data.append('officePhone', formData.officePhone);
+        data.append('ptel', formData.ptel);
 
         try {
             const response = await fetch('/api/register', { method: 'POST', body: data });
@@ -240,7 +246,7 @@ export default function RegisterPage() {
         }
     };
 
-const SearchableSelect = ({ label, name, value, optionsList, onChange, placeholder, counter }: any) => {
+const SearchableSelect = ({ label, name, value, optionsList, onChange, placeholder, counter, targetId }: any) => {
     return (
         <div className="relative">
             <label className="text-sm font-bold text-gray-700 ml-1">{label}</label>
@@ -248,24 +254,25 @@ const SearchableSelect = ({ label, name, value, optionsList, onChange, placehold
                 list={`list-${name}`}
                 name={name}
                 value={value}
-                onChange={onChange}
+                onChange={(e) => {
+                    const selected = optionsList.find((item: any) => 
+                        (item.prename || item.position_type_name || item.position_th || item.name) === e.target.value
+                    );
+                    // ส่งค่ากลับไปทั้ง text และ id (ถ้ามี)
+                    onChange(e.target.name, e.target.value, selected ? selected[targetId] : null);
+                }}
+                className="w-full mt-1 px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                 placeholder={placeholder}
-                className="w-full mt-1 px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
             />
             <datalist id={`list-${name}`}>
                 {optionsList.map((item: any, index: number) => (
-                    <option key={index} value={item.name || item.prename || item.position_th || item.position_type_name} />
+                    <option key={index} value={item.prename || item.position_type_name || item.position_th || item.name} />
                 ))}
             </datalist>
-            {counter && (
-                <div className="text-right text-[10px] text-gray-400 mt-1 font-medium">
-                    {value?.length || 0} / {counter}
-                </div>
-            )}
+            {counter && <div className="text-right text-[10px] text-gray-400 mt-1">{value.length} / {counter}</div>}
         </div>
     );
 };
-
 
 const handleRegister = (e: React.FormEvent) => {
         e.preventDefault();
@@ -338,15 +345,15 @@ const handleRegister = (e: React.FormEvent) => {
                                 <div className="relative">
                                     <input 
                                         type="text" 
-                                        name="idCard" 
+                                        name="cid" 
                                         maxLength={13}
-                                        value={formData.idCard} 
+                                        value={formData.cid} 
                                         onChange={handleChange} 
                                         className={inputStyle} 
                                         placeholder="กรอกเลข 13 หลัก"
                                     />
                                     <div className={counterStyle}>
-                                        {formData.idCard?.length || 0} / 13
+                                        {formData.cid?.length || 0} / 13
                                     </div>
                                 </div>
                             </div>
@@ -413,14 +420,14 @@ const handleRegister = (e: React.FormEvent) => {
                             <div className="relative">
                                 <input 
                                     type="text" 
-                                    name="officePhone" 
+                                    name="ptel" 
                                     maxLength={10}
-                                    value={formData.officePhone} 
+                                    value={formData.ptel} 
                                     onChange={handleChange} 
                                     className={inputStyle} 
                                 />
                                 <div className={counterStyle}>
-                                    {formData.officePhone?.length || 0} / 10
+                                    {formData.ptel?.length || 0} / 10
                                 </div>
                             </div>
                         </div>
