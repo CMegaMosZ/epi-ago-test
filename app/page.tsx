@@ -84,7 +84,8 @@ try {
                 localStorage.setItem('user', JSON.stringify({
                     fullname: data.name,
                     role: data.role,
-                    officeInfo_id: data.officeInfo_id
+                    officeInfo_id: data.officeInfo_id,
+                    agoId: data.agoId
                 }));
                 
                 Swal.fire({
@@ -112,6 +113,107 @@ try {
     } catch (error) {
         setIsLoading(false);
         Swal.fire({ icon: 'error', title: 'Error', text: 'เชื่อมต่อฐานข้อมูลไม่ได้' });
+    }
+};
+
+useEffect(() => {
+    const fetchPersonnel = async () => {
+        setIsLoading(true);
+        try {
+            const storedUser = localStorage.getItem('user');
+            if (!storedUser) {
+                console.error("ไม่พบข้อมูลผู้ใช้");
+                setIsLoading(false);
+                return;
+            }
+
+            const userData = JSON.parse(storedUser);
+            // ดึง agoId (ใช้ชื่อ Key ให้ตรงกับที่เก็บในหน้า Login)
+            const agoId = userData.agoId || userData.ago_id || userData.username;
+
+            if (!agoId || agoId === 'undefined') {
+                console.error("ไม่พบรหัสหน่วยงาน (agoId)");
+                setIsLoading(false);
+                return;
+            }
+
+            // ส่ง agoId ไปที่ API
+            const response = await fetch(`/api/unitAdmin/userInfo?agoId=${agoId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                setPersonnelList(result.data);
+            } else {
+                console.error(result.message);
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchPersonnel();
+}, []);
+
+const handleForgetPassword = async () => {
+    const { value: idCardInput } = await Swal.fire({
+        title: 'แจ้งลืมรหัสผ่าน',
+        input: 'text',
+        inputLabel: 'กรุณากรอกเลขบัตรประจำตัวประชาชน 13 หลัก',
+        inputPlaceholder: 'X-XXXX-XXXXX-XX-X',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#2563eb', // สีน้ำเงิน
+        inputAttributes: {
+            maxlength: "13",
+            autocapitalize: 'off',
+            autocorrect: 'off'
+        },
+        inputValidator: (value) => {
+            if (!value || value.length !== 13 || isNaN(Number(value))) {
+                return 'กรุณากรอกเลขบัตรประชาชนให้ครบ 13 หลักที่เป็นตัวเลขเท่านั้น'
+            }
+        }
+    });
+
+    // ถ้าผู้ใช้กรอกข้อมูลและกดตกลง
+    if (idCardInput) {
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/auth/forgetPassword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: idCardInput }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ส่งคำขอสำเร็จ',
+                    text: 'ระบบได้บันทึกข้อมูลแล้ว กรุณาติดต่อเจ้าหน้าที่เพื่อรับรหัสผ่านใหม่',
+                    confirmButtonColor: '#10b981'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่สำเร็จ',
+                    text: result.message || 'ไม่พบเลขบัตรประชาชนนี้ในระบบ',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
 };
 
@@ -262,12 +364,12 @@ try {
 
         {/* ฝั่งขวา: ลืมรหัสผ่าน (แสดงทั้งคู่) */}
         <div className="flex-1 text-right">
-            <button 
-                type="button" 
-                onClick={() => setIsForgetPasswordOpen(true)}
-                className={`text-sm font-medium transition-colors ${
-                    activeTab === 'USER' ? 'text-red-500 hover:text-orange-600' : 'text-red-500 hover:text-orange-600'
-                }`}>
+            {/* สำหรับหน้าจอปกติ */}
+            <button
+                type="button"
+                onClick={handleForgetPassword} // เรียกใช้งาน SweetAlert ทันที
+                className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+            >
                 ลืมรหัสผ่าน
             </button>
         </div>

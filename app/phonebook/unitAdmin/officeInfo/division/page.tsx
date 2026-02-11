@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     Building2, Plus, Trash2, Save, ArrowLeft, 
-    Info, Phone, Hash, Layers 
+    Info, Phone, Hash, Layers,Users, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import Swal from 'sweetalert2';
@@ -16,10 +16,79 @@ interface SubDepartment {
 }
 
 export default function ManageSubDepartments() {
-    // 1. เริ่มต้นด้วย 1 กลุ่มงานเสมอ
+    const [sections, setSections] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [agoId, setAgoId] = useState<string | null>(null);
+        // 1. เริ่มต้นด้วย 1 กลุ่มงานเสมอ
     const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([
         { id: Date.now(), name: '', initial: '', phone: '' }
     ]);
+    const [officeName, setOfficeName] = useState<string>('');
+
+    // 1. โหลดข้อมูลกลุ่มงานเมื่อเปิดหน้า
+useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            const userData = JSON.parse(storedUser);
+            
+            // 🔹 ดึงชื่อจาก userData.name (ค่านี้คือ fname + lname ที่โชว์มุมขวาบน)
+            setOfficeName(userData.fullname || "ไม่ระบุชื่อหน่วยงาน"); 
+            
+            // ดึง id มาเพื่อใช้ fetch ข้อมูลตาราง
+            const id = userData.agoId || userData.username;
+            setAgoId(id);
+            
+            if (id) {
+                fetchSections(id);
+            }
+        } catch (error) {
+            console.error("Error parsing user data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+}, []);
+
+    const fetchSections = async (id: string) => {
+        try {
+            const res = await fetch(`/api/unitAdmin/officeInfo/division?agoId=${id}`);
+            const result = await res.json();
+            if (result.success) setSections(result.data);
+        } finally { setIsLoading(false); }
+    };
+
+    // 2. ฟังก์ชันแสดงรายชื่อคนในกลุ่มงาน (Pop-up SweetAlert)
+    const handleViewMembers = async (sectionId: number, sectionName: string) => {
+        Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch(`/api/unitAdmin/officeInfo/division?agoId=${agoId}&sectionId=${sectionId}`);
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                const memberListHtml = result.data.map((m: any) => 
+                    `<div style="text-align: left; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                        <strong>${m.fullname}</strong><br/>
+                        <span style="font-size: 0.85rem; color: #666;">${m.position}</span>
+                    </div>`
+                ).join('');
+
+                Swal.fire({
+                    title: `บุคลากรใน ${sectionName}`,
+                    html: `<div style="max-height: 400px; overflow-y: auto;">${memberListHtml}</div>`,
+                    confirmButtonText: 'ปิด',
+                    confirmButtonColor: '#3085d6'
+                });
+            } else {
+                Swal.fire('ไม่พบข้อมูล', 'ไม่มีรายชื่อบุคลากรในกลุ่มงานนี้', 'info');
+            }
+        } catch (error) {
+            Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลได้', 'error');
+        }
+    };
+
+    if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
     // ฟังก์ชันเพิ่มกลุ่มงานใหม่ (ปุ่มสีน้ำเงิน)
     const handleAddGroup = () => {
@@ -66,7 +135,7 @@ export default function ManageSubDepartments() {
                             <h1 className="text-2xl font-bold text-gray-800">ข้อมูลกลุ่มงาน/ฝ่าย</h1>
                             <p className="text-md text-gray-600 font-medium mt-1">
                                 <Building2 size={14} className="inline mr-1" /> 
-                                สังกัด: สำนักงานเทคโนโลยีสารสนเทศและการสื่อสาร
+                                : {officeName}
                             </p>
                         </div>
                     </div>

@@ -16,15 +16,15 @@ export async function POST(req: Request) {
         } else {
             query = `
             SELECT 
-                    u.id, u.fname, u.lname, u.password, u.role, 
-                    u.username AS ago_id,              -- นี่คือ 0001, 0002
-                    d.id AS office_pk_id,
-                    d.remark1 AS office_name
+                u.id, u.fname, u.lname, u.password, u.role, 
+                u.username AS ago_id, 
+                d.id AS office_pk_id,
+                d.remark1 AS office_name
                 FROM users u
-                LEFT JOIN dept_dtl d ON TRIM(u.username) = TRIM(d.ago_id)
+                LEFT JOIN dept_dtl d ON u.username = d.ago_id
                 WHERE u.username = ? AND u.status = 1 
                 LIMIT 1
-            `;
+                `;
             // query = `SELECT id, fname, lname, password, role, dept FROM users WHERE username = ? AND status = 1 LIMIT 1`;
             params = [username];
         }
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
             name: `${user.fname} ${user.lname}`,
             role: userRole,
             officeInfo_id: user.office_pk_id,
-            agoId: user.ago_id                  // ตรวจสอบว่ามีบรรทัดนี้
+            agoId: user.ago_id   // <--- บรรทัดนี้ "ต้องมี" และสะกดแบบนี้เป๊ะๆ
         });
 
     } catch (error: any) {
